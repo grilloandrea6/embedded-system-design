@@ -4,39 +4,45 @@ module fifo #( parameter nrOfEntries = 16,
                                reset,
                                push,
                                pop,
-              input wire [bitWidth−1:0]   pushData,
+              input wire [bitWidth-1:0]   pushData,
               output wire                   full,
                                             empty,
-              output wire [bitWidth−1:0]  popData);
+              output wire [bitWidth-1:0]  popData);
 
-    reg [bitwidth-1 : 0] memoryContent [nrOfEntries-1 : 0];
+    reg [bitWidth-1 : 0] memoryContent [nrOfEntries-1 : 0];
 
-    reg [$clog(nrOfEntries) - 1 : 0] pushCounter = $clog(nrOfEntries)'b0;
-    reg [$clog(nrOfEntries) - 1 : 0] popCounter  = $clog(nrOfEntries)'b0;
+    localparam nrOfBits = $clog2(nrOfEntries);
+    
+    reg [nrOfBits - 1 : 0] pushCounter;
+    reg [nrOfBits - 1 : 0] popCounter;
     
     always @(posedge clock)
     begin
-        if(push == 1’b1)
+        if(push == 1'b1)
         begin
             // write pushData into memoryContent(pushCounter)
             memoryContent[pushCounter] = pushData;
             // increment pushCounter
-            pushCounter = pushCounter + $clog(nrOfEntries)'b1;
+            pushCounter = pushCounter + 1;
         end
 
-        if(pop == 1’b1 and pushCounter > popCounter)
+        if(pop == 1'b1 && pushCounter > popCounter)
         begin
-            // read memoryCounter(popData) into popData
-            popData = memoryContent[popData];
             // increment popCounter
-            popCounter = popCounter + $clog(nrOfEntries)'b1;
+            popCounter = popCounter + 1;
         end
 
-        if (reset == 1’b1)
+        if (reset == 1'b1)
         begin
-            memoryContent <= 0;  // ToDo check if ok
+            pushCounter = 0;
+            popCounter  = 0;
         end
     
     end
+
+    assign popData = memoryContent[popCounter-1];
+    assign full    = pushCounter == (popCounter - 1);
+    assign empty   = pushCounter == popCounter;
+
 
 endmodule
