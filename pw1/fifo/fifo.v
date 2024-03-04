@@ -25,8 +25,10 @@ module fifo #( parameter nrOfEntries = 16,
             // increment pushCounter
             pushCounter = pushCounter + 1;
         end
+	
+	//$display("pushCounter: %d, popCounter: %d", pushCounter, popCounter);
 
-        if(pop == 1'b1 && pushCounter > popCounter)
+        if(pop == 1'b1)// && pushCounter > popCounter)
         begin
             // increment popCounter
             popCounter = popCounter + 1;
@@ -41,6 +43,7 @@ module fifo #( parameter nrOfEntries = 16,
     end
 
     assign popData = memoryContent[popCounter-1];
+
     assign full    = pushCounter == (popCounter - 1);
     assign empty   = pushCounter == popCounter;
 
