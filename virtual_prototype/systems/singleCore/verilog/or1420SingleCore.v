@@ -313,9 +313,9 @@ module or1420SingleCore ( input wire         clock12MHz,
    *
    */
   wire [31:0] s_cpu1CiResult;
-  wire [31:0] s_cpu1CiDataA, s_cpu1CiDataB, s_camCiResult, s_delayResult;
+  wire [31:0] s_cpu1CiDataA, s_cpu1CiDataB, s_camCiResult, s_delayResult, s_profilingResult;                                                                     // added s_profilingResult
   wire [7:0]  s_cpu1CiN;
-  wire        s_cpu1CiRa, s_cpu1CiRb, s_cpu1CiRc, s_cpu1CiStart, s_cpu1CiCke, s_cpu1CiDone, s_i2cCiDone, s_delayCiDone;
+  wire        s_cpu1CiRa, s_cpu1CiRb, s_cpu1CiRc, s_cpu1CiStart, s_cpu1CiCke, s_cpu1CiDone, s_i2cCiDone, s_delayCiDone, s_profilingDone, s_cpuIsStalled;                         // added s_profilingDone, s_cpuIsStalled
   wire [4:0]  s_cpu1CiA, s_cpu1CiB, s_cpu1CiC;
   wire        s_cpu1IcacheRequestBus, s_cpu1DcacheRequestBus, s_camCiDone;
   wire        s_cpu1IcacheBusAccessGranted, s_cpu1DcacheBusAccessGranted;
@@ -326,14 +326,14 @@ module or1420SingleCore ( input wire         clock12MHz,
   wire [7:0]  s_cpu1BurstSize;
   wire        s_spm1Irq;
   
-  assign s_cpu1CiDone = s_hdmiDone | s_swapByteDone | s_flashDone | s_cpuFreqDone | s_i2cCiDone | s_delayCiDone | s_camCiDone;
-  assign s_cpu1CiResult = s_hdmiResult | s_swapByteResult | s_flashResult | s_cpuFreqResult | s_i2cCiResult | s_camCiResult | s_delayResult; 
+  assign s_cpu1CiDone = s_hdmiDone | s_swapByteDone | s_flashDone | s_cpuFreqDone | s_i2cCiDone | s_delayCiDone | s_camCiDone | s_profilingDone;                 // added s_profilingDone
+  assign s_cpu1CiResult = s_hdmiResult | s_swapByteResult | s_flashResult | s_cpuFreqResult | s_i2cCiResult | s_camCiResult | s_delayResult | s_profilingResult; // added s_profilingResult
 
   or1420Top #( .NOP_INSTRUCTION(32'h1500FFFF)) cpu1
              (.cpuClock(s_systemClock),
               .cpuReset(s_cpuReset),
               .irq(1'b0),
-              .cpuIsStalled(),
+              .cpuIsStalled(s_cpuIsStalled),                                                                // added stall signal
               .iCacheReqBus(s_cpu1IcacheRequestBus),
               .dCacheReqBus(s_cpu1DcacheRequestBus),
               .iCacheBusGrant(s_cpu1IcacheBusAccessGranted),
@@ -415,6 +415,24 @@ module or1420SingleCore ( input wire         clock12MHz,
                    .result(s_i2cCiResult),
                    .SDA(SDA),
                    .SCL(SCL));
+  /*
+   *
+   * Custom instruction for profiling counters
+   *
+   */
+   profileCi #(.customId(8'd8)) profile
+               (.start(s_cpu1CiStart),
+                .clock(s_systemClock),
+                .reset(s_cpuReset),
+                .stall(s_cpuIsStalled),
+                .busIdle(s_busIdle),
+                .valueA(s_cpu1CiDataA),
+                .valueB(s_cpu1CiDataB),
+                .done(s_profilingDone),
+                .result(s_profilingResult),
+                .ciN(s_cpu1CiN));
+
+
 
   /*
    *
