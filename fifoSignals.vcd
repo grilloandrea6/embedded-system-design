@@ -1,0 +1,809 @@
+$date
+	Mon Mar 04 18:17:28 2024
+$end
+$version
+	ModelSim Version 10.5b
+$end
+$timescale
+	1ps
+$end
+
+$scope module fifoTestBench $end
+
+$scope module DUT $end
+$var parameter 32 ! nrOfEntries $end
+$var parameter 32 " bitWidth $end
+$var parameter 32 # nrOfBits $end
+$var wire 1 $ clock $end
+$var wire 1 % reset $end
+$var wire 1 & push $end
+$var wire 1 ' pop $end
+$var wire 1 ( pushData [31] $end
+$var wire 1 ) pushData [30] $end
+$var wire 1 * pushData [29] $end
+$var wire 1 + pushData [28] $end
+$var wire 1 , pushData [27] $end
+$var wire 1 - pushData [26] $end
+$var wire 1 . pushData [25] $end
+$var wire 1 / pushData [24] $end
+$var wire 1 0 pushData [23] $end
+$var wire 1 1 pushData [22] $end
+$var wire 1 2 pushData [21] $end
+$var wire 1 3 pushData [20] $end
+$var wire 1 4 pushData [19] $end
+$var wire 1 5 pushData [18] $end
+$var wire 1 6 pushData [17] $end
+$var wire 1 7 pushData [16] $end
+$var wire 1 8 pushData [15] $end
+$var wire 1 9 pushData [14] $end
+$var wire 1 : pushData [13] $end
+$var wire 1 ; pushData [12] $end
+$var wire 1 < pushData [11] $end
+$var wire 1 = pushData [10] $end
+$var wire 1 > pushData [9] $end
+$var wire 1 ? pushData [8] $end
+$var wire 1 @ pushData [7] $end
+$var wire 1 A pushData [6] $end
+$var wire 1 B pushData [5] $end
+$var wire 1 C pushData [4] $end
+$var wire 1 D pushData [3] $end
+$var wire 1 E pushData [2] $end
+$var wire 1 F pushData [1] $end
+$var wire 1 G pushData [0] $end
+$var wire 1 H full $end
+$var wire 1 I empty $end
+$var wire 1 J popData [31] $end
+$var wire 1 K popData [30] $end
+$var wire 1 L popData [29] $end
+$var wire 1 M popData [28] $end
+$var wire 1 N popData [27] $end
+$var wire 1 O popData [26] $end
+$var wire 1 P popData [25] $end
+$var wire 1 Q popData [24] $end
+$var wire 1 R popData [23] $end
+$var wire 1 S popData [22] $end
+$var wire 1 T popData [21] $end
+$var wire 1 U popData [20] $end
+$var wire 1 V popData [19] $end
+$var wire 1 W popData [18] $end
+$var wire 1 X popData [17] $end
+$var wire 1 Y popData [16] $end
+$var wire 1 Z popData [15] $end
+$var wire 1 [ popData [14] $end
+$var wire 1 \ popData [13] $end
+$var wire 1 ] popData [12] $end
+$var wire 1 ^ popData [11] $end
+$var wire 1 _ popData [10] $end
+$var wire 1 ` popData [9] $end
+$var wire 1 a popData [8] $end
+$var wire 1 b popData [7] $end
+$var wire 1 c popData [6] $end
+$var wire 1 d popData [5] $end
+$var wire 1 e popData [4] $end
+$var wire 1 f popData [3] $end
+$var wire 1 g popData [2] $end
+$var wire 1 h popData [1] $end
+$var wire 1 i popData [0] $end
+$var reg 4 j pushCounter [3:0] $end
+$var reg 4 k popCounter [3:0] $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+#0
+$dumpvars
+bx j
+bx k
+b10000 !
+b100000 "
+b100 #
+xH
+xI
+xi
+xh
+xg
+xf
+xe
+xd
+xc
+xb
+xa
+x`
+x_
+x^
+x]
+x\
+x[
+xZ
+xY
+xX
+xW
+xV
+xU
+xT
+xS
+xR
+xQ
+xP
+xO
+xN
+xM
+xL
+xK
+xJ
+0G
+0F
+0E
+0D
+0C
+0B
+0A
+0@
+0?
+0>
+0=
+0<
+0;
+0:
+09
+08
+07
+06
+05
+04
+03
+02
+01
+00
+0/
+0.
+0-
+0,
+0+
+0*
+0)
+0(
+0'
+0&
+0$
+1%
+$end
+#5
+1$
+b0 j
+b0 k
+1I
+0H
+0i
+0h
+0g
+0f
+0e
+0d
+0c
+0b
+0a
+0`
+0_
+0^
+0]
+0\
+0[
+0Z
+0Y
+0X
+0W
+0V
+0U
+0T
+0S
+0R
+0Q
+0P
+0O
+0N
+0M
+0L
+0K
+0J
+#10
+0$
+#15
+1$
+#20
+0%
+0$
+#25
+1$
+#30
+0$
+#35
+1$
+#40
+0$
+1&
+#45
+1$
+b1 j
+0I
+#50
+0$
+1G
+#55
+1$
+b10 j
+#60
+0$
+0G
+1F
+#65
+1$
+b11 j
+#70
+0$
+1G
+#75
+1$
+b100 j
+#80
+0$
+0G
+0F
+1E
+#85
+1$
+b101 j
+#90
+0$
+1G
+#95
+1$
+b110 j
+#100
+0$
+0G
+1F
+#105
+1$
+b111 j
+#110
+0$
+1G
+#115
+1$
+b1000 j
+#120
+0$
+0G
+0F
+0E
+1D
+#125
+1$
+b1001 j
+#130
+0$
+1G
+#135
+1$
+b1010 j
+#140
+0$
+0G
+1F
+#145
+1$
+b1011 j
+#150
+0$
+1G
+#155
+1$
+b1100 j
+#160
+0$
+0G
+0F
+1E
+#165
+1$
+b1101 j
+#170
+0$
+1G
+#175
+1$
+b1110 j
+#180
+0$
+0G
+1F
+#185
+1$
+b1111 j
+#190
+0$
+1G
+#195
+1$
+b0 j
+1I
+#200
+0$
+0G
+0F
+0E
+0D
+1C
+#205
+1$
+b1 j
+0I
+#210
+0$
+1G
+#215
+1$
+b10 j
+#220
+0$
+0G
+1F
+#225
+1$
+b11 j
+#230
+0$
+1G
+#235
+1$
+b100 j
+#240
+0$
+0G
+0F
+1E
+#245
+1$
+b101 j
+#250
+0$
+1G
+#255
+1$
+b110 j
+#260
+0$
+0G
+1F
+#265
+1$
+b111 j
+#270
+0$
+1G
+#275
+1$
+b1000 j
+#280
+0$
+0G
+0F
+0E
+1D
+#285
+1$
+b1001 j
+#290
+0$
+1G
+#295
+1$
+b1010 j
+#300
+0$
+0G
+1F
+#305
+1$
+b1011 j
+#310
+0$
+1G
+#315
+1$
+b1100 j
+#320
+0$
+0G
+0F
+1E
+#325
+1$
+b1101 j
+#330
+0$
+1G
+#335
+1$
+b1110 j
+#340
+0$
+0G
+1F
+#345
+1$
+b1111 j
+#350
+0$
+1G
+#355
+1$
+b0 j
+1I
+#360
+0$
+0G
+0F
+0E
+0D
+0C
+1B
+0&
+1'
+#365
+1$
+b1 k
+0I
+1H
+1e
+#370
+0$
+#375
+1$
+b10 k
+0H
+1i
+#380
+0$
+#385
+1$
+b11 k
+0i
+1h
+#390
+0$
+#395
+1$
+b100 k
+1i
+#400
+0$
+#405
+1$
+b101 k
+0i
+0h
+1g
+#410
+0$
+#415
+1$
+b110 k
+1i
+#420
+0$
+#425
+1$
+b111 k
+0i
+1h
+#430
+0$
+#435
+1$
+b1000 k
+1i
+#440
+0$
+#445
+1$
+b1001 k
+0i
+0h
+0g
+1f
+#450
+0$
+#455
+1$
+b1010 k
+1i
+#460
+0$
+#465
+1$
+b1011 k
+0i
+1h
+#470
+0$
+#475
+1$
+b1100 k
+1i
+#480
+0$
+#485
+1$
+b1101 k
+0i
+0h
+1g
+#490
+0$
+#495
+1$
+b1110 k
+1i
+#500
+0$
+#505
+1$
+b1111 k
+0i
+1h
+#510
+0$
+#515
+1$
+b0 k
+1I
+0h
+0g
+0f
+0e
+#520
+0$
+#525
+1$
+b1 k
+0I
+1H
+1e
+#530
+0$
+#535
+1$
+b10 k
+0H
+1i
+#540
+0$
+#545
+1$
+b11 k
+0i
+1h
+#550
+0$
+#555
+1$
+b100 k
+1i
+#560
+0$
+#565
+1$
+b101 k
+0i
+0h
+1g
+#570
+0$
+#575
+1$
+b110 k
+1i
+#580
+0$
+#585
+1$
+b111 k
+0i
+1h
+#590
+0$
+#595
+1$
+b1000 k
+1i
+#600
+0$
+#605
+1$
+b1001 k
+0i
+0h
+0g
+1f
+#610
+0$
+#615
+1$
+b1010 k
+1i
+#620
+0$
+#625
+1$
+b1011 k
+0i
+1h
+#630
+0$
+#635
+1$
+b1100 k
+1i
+#640
+0$
+#645
+1$
+b1101 k
+0i
+0h
+1g
+#650
+0$
+#655
+1$
+b1110 k
+1i
+#660
+0$
+#665
+1$
+b1111 k
+0i
+1h
+#670
+0$
+#675
+1$
+b0 k
+1I
+0h
+0g
+0f
+0e
+#680
+0$
+0'
+#685
+1$
+#690
+0$
+#695
+1$
+#700
+0$
+#705
+1$
+#710
+0$
+#715
+1$
+#720
+0$
+#725
+1$
+#730
+0$
+#735
+1$
+#740
+0$
+#745
+1$
+#750
+0$
+#755
+1$
+#760
+0$
+#765
+1$
+#770
+0$
+#775
+1$
+#780
+0$
+#785
+1$
+#790
+0$
+#795
+1$
+#800
+0$
+#805
+1$
+#810
+0$
+#815
+1$
+#820
+0$
+#825
+1$
+#830
+0$
+#835
+1$
+#840
+0$
+#845
+1$
+#850
+0$
+#855
+1$
+#860
+0$
+#865
+1$
+#870
+0$
+#875
+1$
+#880
+0$
+#885
+1$
+#890
+0$
+#895
+1$
+#900
+0$
+#905
+1$
+#910
+0$
+#915
+1$
+#920
+0$
+#925
+1$
+#930
+0$
+#935
+1$
+#940
+0$
+#945
+1$
+#950
+0$
+#955
+1$
+#960
+0$
+#965
+1$
+#970
+0$
+#975
+1$
+#980
+0$
+#985
+1$
+#990
+0$
+#995
+1$
+#1000
+0$

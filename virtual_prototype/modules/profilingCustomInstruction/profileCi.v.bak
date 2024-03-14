@@ -56,6 +56,7 @@ always @* begin
       2'b01: selected_result = value_counter1; // Counter 1
       2'b10: selected_result = value_counter2; // Counter 2
       2'b11: selected_result = value_counter3; // Counter 3
+      //default: result = 32'b0; // Default case, actually it doesn't matter
     endcase
   end else begin
     selected_result = 32'b0;

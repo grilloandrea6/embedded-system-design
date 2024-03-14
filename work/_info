@@ -1,0 +1,53 @@
+m255
+K4
+z2
+13
+!s112 1.1
+!i10d 8192
+!i10e 25
+!i10f 100
+cModel Technology
+dC:/intelFPGA_lite/18.1
+vfifo
+Z0 !s110 1709572585
+!i10b 1
+!s100 mCcVK9I8?zS1iN;hUlPnW3
+IZRDJVMeCTBn6P]=WlA]J`0
+Z1 VDg1SIo80bB@j0V0VzS_@n1
+Z2 d//Mac/Home/Documents/EPFL/EmbeddedSP/embedded-system-design
+w1709572578
+8//Mac/Home/Documents/EPFL/EmbeddedSP/embedded-system-design/pw1/fifo/fifo.v
+F//Mac/Home/Documents/EPFL/EmbeddedSP/embedded-system-design/pw1/fifo/fifo.v
+L0 1
+Z3 OV;L;10.5b;63
+r1
+!s85 0
+31
+Z4 !s108 1709572585.000000
+!s107 //Mac/Home/Documents/EPFL/EmbeddedSP/embedded-system-design/pw1/fifo/fifo.v|
+!s90 -reportprogress|300|-work|work|-stats=none|//Mac/Home/Documents/EPFL/EmbeddedSP/embedded-system-design/pw1/fifo/fifo.v|
+!i113 1
+Z5 o-work work
+Z6 tCvgOpt 0
+vfifoTestBench
+R0
+!i10b 1
+!s100 `S4z]Zdog9>R;U>B@nFWo2
+IY^<Z`5QJiP6HEalhPY[:Z3
+R1
+R2
+w1709569759
+8//Mac/Home/Documents/EPFL/EmbeddedSP/embedded-system-design/pw1/fifo/fifo_tb.v
+F//Mac/Home/Documents/EPFL/EmbeddedSP/embedded-system-design/pw1/fifo/fifo_tb.v
+L0 3
+R3
+r1
+!s85 0
+31
+R4
+!s107 //Mac/Home/Documents/EPFL/EmbeddedSP/embedded-system-design/pw1/fifo/fifo_tb.v|
+!s90 -reportprogress|300|-work|work|-stats=none|//Mac/Home/Documents/EPFL/EmbeddedSP/embedded-system-design/pw1/fifo/fifo_tb.v|
+!i113 1
+R5
+R6
+nfifo@test@bench
