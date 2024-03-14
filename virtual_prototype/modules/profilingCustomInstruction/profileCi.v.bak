@@ -1,4 +1,4 @@
-module profileCi #(parameter[7:0] customId = 8'h00)
+module profileCi #(parameter[7:0] customId = 8'd8)
 		  (input wire	start,
 				clock,
 				reset,
@@ -18,7 +18,7 @@ reg [31:0] selected_result;
 counter #(.WIDTH(32)) counter0 ( // count n° of CPU cycles
         .reset(reset || valueB[8]),
         .clock(clock),
-        .enable(valueB[0]&& valueB[4]),
+        .enable(valueB[0]&& !valueB[4]),
         .direction(1'b1), // Count up
         .counterValue(value_counter0) // Save counter's value in result
     );
@@ -56,7 +56,6 @@ always @* begin
       2'b01: selected_result = value_counter1; // Counter 1
       2'b10: selected_result = value_counter2; // Counter 2
       2'b11: selected_result = value_counter3; // Counter 3
-      //default: result = 32'b0; // Default case, actually it doesn't matter
     endcase
   end else begin
     selected_result = 32'b0;

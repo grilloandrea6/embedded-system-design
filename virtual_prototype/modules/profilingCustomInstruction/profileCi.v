@@ -1,4 +1,4 @@
-module profileCi #(parameter[7:0] customId = 8'h00)
+module profileCi #(parameter[7:0] customId = 8'd8)
 		  (input wire	start,
 				clock,
 				reset,
@@ -11,14 +11,13 @@ module profileCi #(parameter[7:0] customId = 8'h00)
 		   output wire [31:0] result);
 
 wire correctId = (ciN == customId)&& start;
-wire enable0, enable1, enable2, enable3;
 wire [31:0] value_counter0, value_counter1, value_counter2, value_counter3;
 reg [31:0] selected_result;
 
 counter #(.WIDTH(32)) counter0 ( // count n° of CPU cycles
         .reset(reset || valueB[8]),
         .clock(clock),
-        .enable(valueB[0]&& valueB[4]),
+        .enable(valueB[0]&& !valueB[4]),
         .direction(1'b1), // Count up
         .counterValue(value_counter0) // Save counter's value in result
     );
