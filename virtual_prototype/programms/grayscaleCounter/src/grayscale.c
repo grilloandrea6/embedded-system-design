@@ -29,31 +29,12 @@ int main () {
   vga[2] = swap_u32(2);
   vga[3] = swap_u32((uint32_t) &grayscale[0]);
 
+  // resetting counters
+  asm volatile ("l.nios_rrr r0, r0, %[in2], 0x8" :: [in2] "r" (0xF << 8));
+
   while(1) {
-    // disable all counters
-    asm volatile("l.nios_rrr r0, r0, %[in2], 0x8" :: [in2] "r" (0xF << 4));
-
-    // read values
-    asm volatile("l.nios_rrr %[out1], %[in1], r0, 0x8 " : [out1] "=r " (result):[in1] "r" (0));
-    printf("CPU cycles\t:\t %u\n", result);
-
-    asm volatile("l.nios_rrr %[out1], %[in1], r0, 0x8 " : [out1] "=r " (result):[in1] "r" (1));
-    printf("Stall cycles\t:\t %u\n", result);
-
-    asm volatile("l.nios_rrr %[out1], %[in1], r0, 0x8 " : [out1] "=r " (result):[in1] "r" (2));
-    printf("Bus idle\t:\t %u\n", result);
-
-    asm volatile("l.nios_rrr %[out1], %[in1], r0, 0x8 " : [out1] "=r " (result):[in1] "r" (3));
-    printf("CPU cycles\t:\t %u\n\n", result);
-
-
-
-    // resetting counters
-    asm volatile ("l.nios_rrr r0, r0, %[in2], 0x8" :: [in2] "r" (0xF << 8));
-
     // start all counters
     asm volatile ("l.nios_rrr r0, r0, %[in2], 0x8" :: [in2] "r" (0xF));
-
 
     uint32_t * gray = (uint32_t *) &grayscale[0];
     takeSingleImageBlocking((uint32_t) &rgb565[0]);
@@ -67,6 +48,25 @@ int main () {
         grayscale[line*camParams.nrOfPixelsPerLine+pixel] = gray;
       }
     }
+
+    // disable all counters
+    asm volatile("l.nios_rrr r0, r0, %[in2], 0x8" :: [in2] "r" (0xF << 4));
+
+    // read values
+    asm volatile("l.nios_rrr %[out1], %[in1], r0, 0x8 " : [out1] "=r " (cycles):[in1] "r" (0));
+    printf("CPU cycles\t:\t %u\n", cycles);
+
+    asm volatile("l.nios_rrr %[out1], %[in1], r0, 0x8 " : [out1] "=r " (stall):[in1] "r" (1));
+    printf("Stall cycles\t:\t %u\n", stall);
+
+    asm volatile("l.nios_rrr %[out1], %[in1], r0, 0x8 " : [out1] "=r " (idle):[in1] "r" (2));
+    printf("Bus idle\t:\t %u\n", idle);
+
+    asm volatile("l.nios_rrr %[out1], %[in1], r0, 0x8 " : [out1] "=r " (cycles):[in1] "r" (3));
+    printf("CPU cycles\t:\t %u\n\n", cycles);
+
+    // resetting counters
+    asm volatile ("l.nios_rrr r0, r0, %[in2], 0x8" :: [in2] "r" (0xF << 8));
 
   }
 }
