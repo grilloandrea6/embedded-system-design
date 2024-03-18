@@ -14,34 +14,36 @@ wire correctId = (ciN == customId)&& start;
 wire [31:0] value_counter0, value_counter1, value_counter2, value_counter3;
 reg [31:0] selected_result;
 
-counter #(.WIDTH(32)) counter0 ( // count n° of CPU cycles
-        .reset(reset || valueB[8]),
+reg count0Enabled, count1Enabled, count2Enabled, count3Enabled;
+
+counter #(.WIDTH(32)) counter0 ( // count CPU cycles
+        .reset(reset || (valueB[8] && correctId)),
         .clock(clock),
-        .enable(valueB[0]&& !valueB[4]),
+        .enable(count0Enabled),
         .direction(1'b1), // Count up
         .counterValue(value_counter0) // Save counter's value in result
     );
 
 counter #(.WIDTH(32)) counter1 ( // stall counter
-        .reset(reset || valueB[9]),
+        .reset(reset || (valueB[9] && correctId)),
         .clock(clock),
-        .enable(stall && valueB[1]&& !valueB[5]), // Count only when stall is high
+        .enable(stall && count1Enabled), // Count only when stall is high
         .direction(1'b1), // Count up
         .counterValue(value_counter1) // Save counter's value in result
     );
 
 counter #(.WIDTH(32)) counter2 ( // busIdle counter
-        .reset(reset || valueB[10]),
+        .reset(reset || (valueB[10] && correctId)),
         .clock(clock),
-        .enable(busIdle && valueB[2]&& !valueB[6]), // Count only when busIdle is high
+        .enable(busIdle && count2Enabled), // Count only when busIdle is high
         .direction(1'b1), // Count up
         .counterValue(value_counter2) // Save counter's value in result
     );
 
-counter #(.WIDTH(32)) counter3 ( // count n° of POU cycles
-        .reset(reset || valueB[11]),
+counter #(.WIDTH(32)) counter3 ( // count CPU cycles
+        .reset(reset || (valueB[11] && correctId)),
         .clock(clock),
-        .enable(valueB[3]&& !valueB[7]),
+        .enable(count3Enabled),
         .direction(1'b1), // Count up
         .counterValue(value_counter3) // Save counter's value in result
     );
@@ -50,6 +52,12 @@ counter #(.WIDTH(32)) counter3 ( // count n° of POU cycles
 always @* begin
   
   if (correctId) begin
+    count0Enabled = valueB[0]&& !valueB[4];
+    count1Enabled = valueB[1]&& !valueB[5];
+    count2Enabled = valueB[2]&& !valueB[6];
+    count3Enabled = valueB[3]&& !valueB[7];
+    
+
     case (valueA[1:0])
       2'b00: selected_result = value_counter0; // Counter 0
       2'b01: selected_result = value_counter1; // Counter 1
