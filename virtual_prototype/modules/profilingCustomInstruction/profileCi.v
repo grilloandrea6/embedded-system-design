@@ -10,9 +10,9 @@ module profileCi #(parameter[7:0] customId = 8'd8)
 		   output wire 	    done,
 		   output wire [31:0] result);
 
-wire correctId = (ciN == customId)&& start;
+wire correctId = (ciN == customId) && start;
 wire [31:0] value_counter0, value_counter1, value_counter2, value_counter3;
-reg [31:0] selected_result;
+reg  [31:0] selected_result;
 
 reg count0Enabled, count1Enabled, count2Enabled, count3Enabled;
 
@@ -52,10 +52,10 @@ counter #(.WIDTH(32)) counter3 ( // count CPU cycles
 always @* begin
   
   if (correctId) begin
-    count0Enabled = valueB[0]&& !valueB[4];
-    count1Enabled = valueB[1]&& !valueB[5];
-    count2Enabled = valueB[2]&& !valueB[6];
-    count3Enabled = valueB[3]&& !valueB[7];
+    count0Enabled = valueB[0] && !valueB[4];
+    count1Enabled = valueB[1] && !valueB[5];
+    count2Enabled = valueB[2] && !valueB[6];
+    count3Enabled = valueB[3] && !valueB[7];
     
 
     case (valueA[1:0])
@@ -70,6 +70,6 @@ always @* begin
 end
 
 assign result = selected_result;
-assign done = correctId && start;
+assign done = correctId;
 
 endmodule

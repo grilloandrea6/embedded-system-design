@@ -30,8 +30,26 @@ int main () {
   vga[3] = swap_u32((uint32_t) &grayscale[0]);
 
   while(1) {
+    // disable all counters
+    asm volatile("l.nios_rrr r0, r0, %[in2], 0x8" :: [in2] "r" (0xF << 4));
+
+    // read values
+    asm volatile("l.nios_rrr %[out1], %[in1], r0, 0x8 " : [out1] "=r " (result):[in1] "r" (0));
+    printf("CPU cycles\t:\t %u\n", result);
+
+    asm volatile("l.nios_rrr %[out1], %[in1], r0, 0x8 " : [out1] "=r " (result):[in1] "r" (1));
+    printf("Stall cycles\t:\t %u\n", result);
+
+    asm volatile("l.nios_rrr %[out1], %[in1], r0, 0x8 " : [out1] "=r " (result):[in1] "r" (2));
+    printf("Bus idle\t:\t %u\n", result);
+
+    asm volatile("l.nios_rrr %[out1], %[in1], r0, 0x8 " : [out1] "=r " (result):[in1] "r" (3));
+    printf("CPU cycles\t:\t %u\n\n", result);
+
+
+
     // resetting counters
-    //asm volatile ("l.nios_rrr r0, r0, %[in2], 0x8" :: [in2] "r" (0xF << 8));
+    asm volatile ("l.nios_rrr r0, r0, %[in2], 0x8" :: [in2] "r" (0xF << 8));
 
     // start all counters
     asm volatile ("l.nios_rrr r0, r0, %[in2], 0x8" :: [in2] "r" (0xF));
@@ -50,17 +68,5 @@ int main () {
       }
     }
 
-    // disable all counters
-    asm volatile("l.nios_rrr r0, r0, %[in2], 0x8" :: [in2] "r" (0xF << 4));
-
-    // read values
-    asm volatile("l.nios_rrr %[out1], %[in1], r0, 0x8 " : [out1] "=r " (result):[in1] "r" (0));
-    printf("CPU cycles\t:\t %u\n", result);
-
-    asm volatile("l.nios_rrr %[out1], %[in1], r0, 0x8 " : [out1] "=r " (result):[in1] "r" (1));
-    printf("Stall cycles\t:\t %u\n", result);
-
-    asm volatile("l.nios_rrr %[out1], %[in1], r0, 0x8 " : [out1] "=r " (result):[in1] "r" (2));
-    printf("Bus idle\t:\t %u\n\n", result);
   }
 }
