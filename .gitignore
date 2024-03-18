@@ -1,3 +1,5 @@
 *.cmem
-
+*.elf
+*.mem
+*.c.o
 virtual_prototype/systems/singleCore/sandbox/
