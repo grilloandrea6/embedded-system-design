@@ -43,13 +43,6 @@ int main () {
     takeSingleImageBlocking((uint32_t) rgb);
     for (int line = 0; line < camParams.nrOfLinesPerImage; line++) {
       for (int pixel = 0; pixel < camParams.nrOfPixelsPerLine; pixel += 4) {
-        uint16_t a = 123;
-        uint16_t b = 123;
-        uint16_t a = 123;
-        uint16_t a = 123;
-        
-
-
         uint32_t rgbA = swap_u16(rgb565[line*camParams.nrOfPixelsPerLine+pixel + 0]) |
                         swap_u16(rgb565[line*camParams.nrOfPixelsPerLine+pixel + 1])  << 16;
 
