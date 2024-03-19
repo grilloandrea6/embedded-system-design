@@ -313,9 +313,9 @@ module or1420SingleCore ( input wire         clock12MHz,
    *
    */
   wire [31:0] s_cpu1CiResult;
-  wire [31:0] s_cpu1CiDataA, s_cpu1CiDataB, s_camCiResult, s_delayResult, s_profilingResult, s_grayscaleResult;                                                                     // added s_profilingResult, s_grayscaleResult
+  wire [31:0] s_cpu1CiDataA, s_cpu1CiDataB, s_camCiResult, s_delayResult, s_profilingResult, s_grayscaleResult, s_grayscale_fasterResult;                                                                     // added s_profilingResult, s_grayscaleResult, s_grayscale_fasterResult
   wire [7:0]  s_cpu1CiN;
-  wire        s_cpu1CiRa, s_cpu1CiRb, s_cpu1CiRc, s_cpu1CiStart, s_cpu1CiCke, s_cpu1CiDone, s_i2cCiDone, s_delayCiDone, s_profilingDone, s_cpuIsStalled, s_grayscaleDone;                         // added s_profilingDone, s_cpuIsStalled, s_grayscaleDone
+  wire        s_cpu1CiRa, s_cpu1CiRb, s_cpu1CiRc, s_cpu1CiStart, s_cpu1CiCke, s_cpu1CiDone, s_i2cCiDone, s_delayCiDone, s_profilingDone, s_cpuIsStalled, s_grayscaleDone, s_grayscale_fasterDone;                         // added s_profilingDone, s_cpuIsStalled, s_grayscaleDone, s_grayscale_fasterDone
   wire [4:0]  s_cpu1CiA, s_cpu1CiB, s_cpu1CiC;
   wire        s_cpu1IcacheRequestBus, s_cpu1DcacheRequestBus, s_camCiDone;
   wire        s_cpu1IcacheBusAccessGranted, s_cpu1DcacheBusAccessGranted;
@@ -326,8 +326,8 @@ module or1420SingleCore ( input wire         clock12MHz,
   wire [7:0]  s_cpu1BurstSize;
   wire        s_spm1Irq;
   
-  assign s_cpu1CiDone = s_hdmiDone | s_swapByteDone | s_flashDone | s_cpuFreqDone | s_i2cCiDone | s_delayCiDone | s_camCiDone | s_profilingDone | s_grayscaleDone;                    // added s_profilingDone, s_grayscaleDone
-  assign s_cpu1CiResult = s_hdmiResult | s_swapByteResult | s_flashResult | s_cpuFreqResult | s_i2cCiResult | s_camCiResult | s_delayResult | s_profilingResult | s_grayscaleResult;  // added s_profilingResult, s_grayscaleResult
+  assign s_cpu1CiDone = s_hdmiDone | s_swapByteDone | s_flashDone | s_cpuFreqDone | s_i2cCiDone | s_delayCiDone | s_camCiDone | s_profilingDone | s_grayscaleDone | s_grayscale_fasterDone;                    // added s_profilingDone, s_grayscaleDone, s_grayscale_fasterDone
+  assign s_cpu1CiResult = s_hdmiResult | s_swapByteResult | s_flashResult | s_cpuFreqResult | s_i2cCiResult | s_camCiResult | s_delayResult | s_profilingResult | s_grayscaleResult | s_grayscale_fasterResult;    // added s_profilingResult, s_grayscaleResult, s_grayscale_fasterResult
 
   or1420Top #( .NOP_INSTRUCTION(32'h1500FFFF)) cpu1
              (.cpuClock(s_systemClock),
@@ -444,6 +444,19 @@ module or1420SingleCore ( input wire         clock12MHz,
                 .isId(s_cpu1CiN),
                 .done(s_grayscaleDone),
                 .result(s_grayscaleResult));
+
+  /*
+   *
+   * Here we modify the custom instruction that performs grayscale conversion to make it faster
+   *
+   */
+  rgb565Grayscalelse_faster #(.customInstructionId(8'd13)) grayscale_faster
+                (.start(s_cpu1CiStart),
+                .valueA(s_cpu1CiDataA),
+                .valueB(s_cpu1CiDataB),
+                .isId(s_cpu1CiN),
+                .done(s_grayscale_fasterDone),
+                .result(s_grayscale_fasterResult));
 
 
 

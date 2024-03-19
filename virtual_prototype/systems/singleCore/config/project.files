@@ -53,5 +53,6 @@
 ../../../modules/profilingCustomInstruction/profileCi.v
 ../../../modules/profilingCustomInstruction/counter.v
 ../../../modules/grayscale/rgb565Grayscalelse.v
+../../../modules/grayscale/rgb565Grayscalelse_faster.v
 ../verilog/or1420SingleCore.v
 
