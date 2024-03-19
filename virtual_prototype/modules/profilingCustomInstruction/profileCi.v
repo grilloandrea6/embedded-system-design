@@ -42,7 +42,7 @@ counter #(.WIDTH(32)) counter0 ( // count CPU cycles
 counter #(.WIDTH(32)) counter1 ( // stall counter
         .reset(count1Reset),
         .clock(clock),
-        .enable(stall && count1Enabled), // Count only when stall is high
+        .enable(count1Enabled), // Count only when stall is high
         .direction(1'b1), // Count up
         .counterValue(value_counter1) // Save counter's value in result
     );
@@ -50,7 +50,7 @@ counter #(.WIDTH(32)) counter1 ( // stall counter
 counter #(.WIDTH(32)) counter2 ( // busIdle counter
         .reset(count2Reset),
         .clock(clock),
-        .enable(busIdle && count2Enabled), // Count only when busIdle is high
+        .enable(count2Enabled), // Count only when busIdle is high
         .direction(1'b1), // Count up
         .counterValue(value_counter2) // Save counter's value in result
     );

@@ -38,12 +38,13 @@ initial
     s_start = 1'b1;
 
     @(negedge reset);            // wait for the reset period to end
-    repeat(2) @(negedge clock);  // wait for 2 clock cycles
+    repeat(10) @(negedge clock);  // wait
     
     s_ciN = 8'd8; // right id, profileCi should activate - counter0 should count
     repeat(10) @(negedge clock);  // wait for 10 clock cycles
 
     s_ciN = 8'h11;// to check if output is forced back to 0 when ciN!=customId
+    s_valueB[11:0] = 12'b111111111111;
     repeat(2) @(negedge clock);
 
     s_ciN = 8'd8;
