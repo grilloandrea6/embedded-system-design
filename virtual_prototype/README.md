@@ -1,4 +1,4 @@
-#### Structure:
+#### Structure::
 
 The virtual prototype consists of three directories:
 
