@@ -12,18 +12,26 @@ module profileCi #(parameter[7:0] customId = 8'd8)
 
 wire correctId = (ciN == customId) && start;
 wire [31:0] value_counter0, value_counter1, value_counter2, value_counter3;
-wire count0Enabled, count1Enabled, count2Enabled, count3Enabled;
+wire count0Enabled, count1Enabled, count2Enabled, count3Enabled, count0Reset, count1Reset, count2Reset, count3Reset;
 reg  [31:0] selected_result;
 reg [11:0] save_regB;
+reg internal_done;
 
 
-assign count0Enabled = valueB[0] && !save_regB[4];
-assign count1Enabled = valueB[1] && !save_regB[5];
-assign count2Enabled = valueB[2] && !save_regB[6];
-assign count3Enabled = valueB[3] && !save_regB[7];
+assign count0Enabled = save_regB[0] && !save_regB[4];
+assign count1Enabled = save_regB[1] && !save_regB[5] && stall;
+assign count2Enabled = save_regB[2] && !save_regB[6] && busIdle;
+assign count3Enabled = save_regB[3] && !save_regB[7];
+assign count0Reset = reset || save_regB[8];
+assign count1Reset = reset || save_regB[9];
+assign count2Reset = reset || save_regB[10];
+assign count3Reset = reset || save_regB[11];
+
+assign result = selected_result;
+assign done = internal_done;
 
 counter #(.WIDTH(32)) counter0 ( // count CPU cycles
-        .reset(reset || save_regB[8]),
+        .reset(count0Reset),
         .clock(clock),
         .enable(count0Enabled),
         .direction(1'b1), // Count up
@@ -31,23 +39,23 @@ counter #(.WIDTH(32)) counter0 ( // count CPU cycles
     );
 
 counter #(.WIDTH(32)) counter1 ( // stall counter
-        .reset(reset || save_regB[9]),
+        .reset(count1Reset),
         .clock(clock),
-        .enable(stall && count1Enabled), // Count only when stall is high
+        .enable(count1Enabled), // Count only when stall is high
         .direction(1'b1), // Count up
         .counterValue(value_counter1) // Save counter's value in result
     );
 
 counter #(.WIDTH(32)) counter2 ( // busIdle counter
-        .reset(reset || save_regB[10]),
+        .reset(count2Reset),
         .clock(clock),
-        .enable(busIdle && count2Enabled), // Count only when busIdle is high
+        .enable(count2Enabled), // Count only when busIdle is high
         .direction(1'b1), // Count up
         .counterValue(value_counter2) // Save counter's value in result
     );
 
 counter #(.WIDTH(32)) counter3 ( // count CPU cycles
-        .reset(reset || save_regB[11]),
+        .reset(count3Reset),
         .clock(clock),
         .enable(count3Enabled),
         .direction(1'b1), // Count up
@@ -57,22 +65,22 @@ counter #(.WIDTH(32)) counter3 ( // count CPU cycles
 
 always @* begin
   if (reset) begin
-    save_regB <= 12'b0;
+    save_regB <= 12'hf00;
   end
   if (correctId) begin
-    save_regB <= valueB;
+    save_regB <= valueB[11:0];
     case (valueA[1:0])
       2'b00: selected_result = value_counter0; // Counter 0
       2'b01: selected_result = value_counter1; // Counter 1
       2'b10: selected_result = value_counter2; // Counter 2
       2'b11: selected_result = value_counter3; // Counter 3
     endcase
+    internal_done = 1'b1;
   end else begin
     selected_result = 32'b0;
+    save_regB[11:8] = 4'd0;
+    internal_done = 1'b0;
   end	
 end
-
-assign result = selected_result;
-assign done = correctId;
 
 endmodule
