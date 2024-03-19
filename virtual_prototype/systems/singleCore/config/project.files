@@ -52,5 +52,6 @@
 ../../../modules/support/verilog/sram2048x8Dp.v
 ../../../modules/profilingCustomInstruction/profileCi.v
 ../../../modules/profilingCustomInstruction/counter.v
+../../../modules/grayscale/rgb565Grayscalelse.v
 ../verilog/or1420SingleCore.v
 
