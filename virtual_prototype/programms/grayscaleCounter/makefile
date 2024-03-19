@@ -15,7 +15,7 @@ LD = $(TOOLCHAIN)-ld
 ELF2MEM ?= convert_or32
 DEBUG ?= 0
 
-CFLAGS ?=
+CFLAGS ?= -Wall
 LDFLAGS ?=
 
 _LDFLAGS += -nostartfiles

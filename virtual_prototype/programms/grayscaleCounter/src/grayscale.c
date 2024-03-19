@@ -7,8 +7,7 @@
 int main () {
   volatile uint16_t rgb565[640*480];
   volatile uint8_t grayscale[640*480];
-  volatile uint32_t result, cycles,stall,idle;
-  volatile uint32_t controlCustomInstr, resultProfile;
+  volatile uint32_t result,cycles,stall,idle;
   volatile unsigned int *vga = (unsigned int *) 0X50000020;
   camParameters camParams;
   vga_clear();
@@ -25,19 +24,20 @@ int main () {
   printf("PCLK (kHz) : %d\n", camParams.pixelClockInkHz );
   printf("FPS        : %d\n", camParams.framesPerSecond );
   uint32_t * rgb = (uint32_t *) &rgb565[0];
-  uint32_t grayPixels;
+
   vga[2] = swap_u32(2);
   vga[3] = swap_u32((uint32_t) &grayscale[0]);
 
   // resetting counters
   asm volatile ("l.nios_rrr r0, r0, %[in2], 0x8" :: [in2] "r" (0xF << 8));
 
+
   while(1) {
     // start all counters
     asm volatile ("l.nios_rrr r0, r0, %[in2], 0x8" :: [in2] "r" (0xF));
 
-    uint32_t * gray = (uint32_t *) &grayscale[0];
-    takeSingleImageBlocking((uint32_t) &rgb565[0]);
+
+    takeSingleImageBlocking((uint32_t) rgb);
     for (int line = 0; line < camParams.nrOfLinesPerImage; line++) {
       for (int pixel = 0; pixel < camParams.nrOfPixelsPerLine; pixel++) {
         uint16_t rgb = swap_u16(rgb565[line*camParams.nrOfPixelsPerLine+pixel]);
@@ -50,7 +50,7 @@ int main () {
     }
 
     // disable all counters
-    asm volatile("l.nios_rrr r0, r0, %[in2], 0x8" :: [in2] "r" (0xF << 4));
+    asm volatile("l.nios_rrr r0, r0, %[in2], 0x8" :: [in2] "r" ((uint32_t) (0xF << 4)));
 
     // read values
     asm volatile("l.nios_rrr %[out1], %[in1], r0, 0x8 " : [out1] "=r " (cycles):[in1] "r" (0));
@@ -66,7 +66,6 @@ int main () {
     printf("CPU cycles\t:\t %u\n\n", cycles);
 
     // resetting counters
-    asm volatile ("l.nios_rrr r0, r0, %[in2], 0x8" :: [in2] "r" (0xF << 8));
-
+    asm volatile ("l.nios_rrr r0, r0, %[in2], 0x8" :: [in2] "r" (0xF << 8)); 
   }
 }
