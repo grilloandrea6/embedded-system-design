@@ -1,4 +1,4 @@
-# Embedded System Design
+# Embedded System Design.
 
 Exercises from the EPFL course Embedded System Design.
 
