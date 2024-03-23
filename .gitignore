@@ -2,4 +2,7 @@
 *.elf
 *.mem
 *.c.o
+*.c.d
+*.s.o
+.vscode/
 virtual_prototype/systems/singleCore/sandbox/

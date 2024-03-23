@@ -25,4 +25,8 @@ CPU cycles   :	  9973675
 Stall cycles :	  8276847
 Bus idle     :	  3715543
 
+Therefore, we have had a substantial improvement across the versions.
+Starting from 11 millions work cycles per frame we brought it to 6 millions with the accelerated version that processes 1 pixel, and then to just 1,5 millions for the version that processes 4 pixels.
+
+
 Andrea Grillo, Riccardo Lionetto
