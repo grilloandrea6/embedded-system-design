@@ -200,6 +200,7 @@ void vga_puts(const char* str);
 
 
 
+
 int main () {
   volatile uint16_t rgb565[640*480];
   volatile uint8_t grayscale[640*480];
@@ -238,16 +239,15 @@ int main () {
     takeSingleImageBlocking((uint32_t) rgb);
     for (int line = 0; line < camParams.nrOfLinesPerImage; line++) {
       for (int pixel = 0; pixel < camParams.nrOfPixelsPerLine; pixel += 4) {
-        uint32_t rgbA = swap_u16(rgb565[line*camParams.nrOfPixelsPerLine+pixel + 0]) |
-                        swap_u16(rgb565[line*camParams.nrOfPixelsPerLine+pixel + 1]) << 16;
-
-        uint32_t rgbB = swap_u16(rgb565[line*camParams.nrOfPixelsPerLine+pixel + 2]) |
-                        swap_u16(rgb565[line*camParams.nrOfPixelsPerLine+pixel + 3]) << 16;
-
+# 97 "src/grayscale.c"
+        uint32_t rgbA = *(uint32_t*)&rgb565[line*camParams.nrOfPixelsPerLine+pixel];
+        uint32_t rgbB = *(uint32_t*)&rgb565[line*camParams.nrOfPixelsPerLine+pixel + 2];
         uint32_t gray;
 
         asm volatile("l.nios_rrr %[out1], %[in1], %[in2], 13" : [out1] "=r " (gray) : [in1]"r" (rgbA),[in2]"r"(rgbB));
-        *(uint32_t*)(&grayscale[line*camParams.nrOfPixelsPerLine+pixel]) = gray;
+
+        *(uint32_t*)&grayscale[line*camParams.nrOfPixelsPerLine+pixel] = gray;
+
       }
     }
 

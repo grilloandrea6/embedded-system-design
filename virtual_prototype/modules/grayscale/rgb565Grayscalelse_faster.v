@@ -12,21 +12,21 @@ reg [31:0] partial1, partial2, partial3, partial4;
 assign done = s_isMyCi;
 
 // Pixel 1
-wire [31:0] red1   = {valueA[7:3],1'b0};
-wire [31:0] green1 =  {valueA[2:0], valueA[15:13]};
-wire [31:0] blue1  = {valueA[12:8],1'b0};
+wire [31:0] red3   = {valueA[7:3],1'b0};
+wire [31:0] green3 =  {valueA[2:0], valueA[15:13]};
+wire [31:0] blue3  = {valueA[12:8],1'b0};
 // Pixel 2
-wire [31:0] red2   = {valueA[23:19],1'b0};
-wire [31:0] green2 =  {valueA[18:16], valueA[31:29]};
-wire [31:0] blue2  = {valueA[28:24],1'b0};
+wire [31:0] red4   = {valueA[23:19],1'b0};
+wire [31:0] green4 =  {valueA[18:16], valueA[31:29]};
+wire [31:0] blue4  = {valueA[28:24],1'b0};
 // Pixel 3
-wire [31:0] red3   = {valueB[7:3],1'b0};
-wire [31:0] green3 =  {valueB[2:0], valueB[15:13]};
-wire [31:0] blue3  = {valueB[12:8],1'b0};
+wire [31:0] red1   = {valueB[7:3],1'b0};
+wire [31:0] green1 =  {valueB[2:0], valueB[15:13]};
+wire [31:0] blue1  = {valueB[12:8],1'b0};
 // Pixel 4
-wire [5:0] red4   = {valueB[23:19],1'b0};
-wire [5:0] green4 =  {valueB[18:16], valueB[31:29]};
-wire [5:0] blue4  = {valueB[28:24],1'b0};
+wire [5:0] red2   = {valueB[23:19],1'b0};
+wire [5:0] green2 =  {valueB[18:16], valueB[31:29]};
+wire [5:0] blue2  = {valueB[28:24],1'b0};
 
 /* first version with multiplication handled by the synthesizer
 reg [31:0] partial1 = (red1 * 54 + green1 * 183 + blue1 * 19);
@@ -97,8 +97,8 @@ always @*
                  (blue4  << 1) +
                   blue4;
 
-      result[7:0] <= partial1[13:6];
-      result[15:8] <= partial2[13:6];
+      result[ 7: 0] <= partial1[13:6];
+      result[15: 8] <= partial2[13:6];
       result[23:16] <= partial3[13:6];
       result[31:24] <= partial4[13:6];
     end

@@ -3,7 +3,8 @@
 #include <swap.h>
 #include <vga.h>
 
-#define PROFILE     1
+#define PROFILE       1
+#define TEST_FUNCTION 0
 
 int main () {
   volatile uint16_t rgb565[640*480];
@@ -43,16 +44,64 @@ int main () {
     takeSingleImageBlocking((uint32_t) rgb);
     for (int line = 0; line < camParams.nrOfLinesPerImage; line++) {
       for (int pixel = 0; pixel < camParams.nrOfPixelsPerLine; pixel += 4) {
-        uint32_t rgbA = swap_u16(rgb565[line*camParams.nrOfPixelsPerLine+pixel + 0]) |
-                        swap_u16(rgb565[line*camParams.nrOfPixelsPerLine+pixel + 1])  << 16;
+#if TEST_FUNCTION
+        rgb565[line*camParams.nrOfPixelsPerLine+pixel] = 0x1253;
+        rgb565[line*camParams.nrOfPixelsPerLine+pixel+1] = 0x34FA;
+        rgb565[line*camParams.nrOfPixelsPerLine+pixel+2] = 0x56BC;
+        rgb565[line*camParams.nrOfPixelsPerLine+pixel+3] = 0x78DE;
 
-        uint32_t rgbB = swap_u16(rgb565[line*camParams.nrOfPixelsPerLine+pixel + 2]) |
-                        swap_u16(rgb565[line*camParams.nrOfPixelsPerLine+pixel + 3]) << 16;
+        volatile uint32_t rgb = swap_u16(rgb565[line*camParams.nrOfPixelsPerLine+pixel]);
+        volatile uint32_t red1 = ((rgb >> 11) & 0x1F) << 3;
+        volatile uint32_t green1 = ((rgb >> 5) & 0x3F) << 2;
+        volatile uint32_t blue1 = (rgb & 0x1F) << 3;
+        volatile uint32_t gray = ((red1*54+green1*183+blue1*19) >> 8)&0xFF;
+        printf("software value 0 %x \n", gray);
 
+        rgb = swap_u16(rgb565[line*camParams.nrOfPixelsPerLine+pixel+1]);
+        red1 = ((rgb >> 11) & 0x1F) << 3;
+        green1 = ((rgb >> 5) & 0x3F) << 2;
+        blue1 = (rgb & 0x1F) << 3;
+        gray = ((red1*54+green1*183+blue1*19) >> 8)&0xFF;
+        printf("software value 1 %x \n", gray);
+
+        rgb = swap_u16(rgb565[line*camParams.nrOfPixelsPerLine+pixel+2]);
+        red1 = ((rgb >> 11) & 0x1F) << 3;
+        green1 = ((rgb >> 5) & 0x3F) << 2;
+        blue1 = (rgb & 0x1F) << 3;
+        gray = ((red1*54+green1*183+blue1*19) >> 8)&0xFF;
+        printf("software value 2 %x \n", gray);
+
+        rgb = swap_u16(rgb565[line*camParams.nrOfPixelsPerLine+pixel+3]);
+        red1 = ((rgb >> 11) & 0x1F) << 3;
+        green1 = ((rgb >> 5) & 0x3F) << 2;
+        blue1 = (rgb & 0x1F) << 3;
+        gray = ((red1*54+green1*183+blue1*19) >> 8)&0xFF;
+        printf("software value 3 %x \n\n", gray);
+
+        volatile uint32_t rgbA = *(uint32_t*)&rgb565[line*camParams.nrOfPixelsPerLine+pixel];
+
+        volatile uint32_t rgbB = *(uint32_t*)&rgb565[line*camParams.nrOfPixelsPerLine+pixel + 2];
+
+        volatile uint32_t grayAcc;
+        
+        asm volatile("l.nios_rrr %[out1], %[in1], %[in2], 13" : [out1] "=r " (grayAcc) : [in1]"r" (rgbA),[in2]"r"(rgbB));
+
+        *(uint32_t*)&grayscale[line*camParams.nrOfPixelsPerLine+pixel] = grayAcc;
+
+        printf("output assigned value 0 %x\n", grayscale[line*camParams.nrOfPixelsPerLine+pixel]);
+        printf("output assigned value 1 %x\n", grayscale[line*camParams.nrOfPixelsPerLine+pixel+1]);
+        printf("output assigned value 2 %x\n", grayscale[line*camParams.nrOfPixelsPerLine+pixel+2]);
+        printf("output assigned value 3 %x\n", grayscale[line*camParams.nrOfPixelsPerLine+pixel+3]);
+        return 0;
+#else
+        uint32_t rgbA = *(uint32_t*)&rgb565[line*camParams.nrOfPixelsPerLine+pixel];
+        uint32_t rgbB = *(uint32_t*)&rgb565[line*camParams.nrOfPixelsPerLine+pixel + 2];
         uint32_t gray;
         
         asm volatile("l.nios_rrr %[out1], %[in1], %[in2], 13" : [out1] "=r " (gray) : [in1]"r" (rgbA),[in2]"r"(rgbB));
-        *(uint32_t*)(&grayscale[line*camParams.nrOfPixelsPerLine+pixel]) = gray;
+
+        *(uint32_t*)&grayscale[line*camParams.nrOfPixelsPerLine+pixel] = gray;
+#endif
       }
     }
 
