@@ -3,7 +3,8 @@
 #include <swap.h>
 #include <vga.h>
 
-#define ACCELERATOR 0
+#define TEST_FUNCTION 0
+#define ACCELERATOR 1
 #define PROFILE     1
 
 int main () {
@@ -45,8 +46,8 @@ int main () {
     for (int line = 0; line < camParams.nrOfLinesPerImage; line++) {
       for (int pixel = 0; pixel < camParams.nrOfPixelsPerLine; pixel++) {
         uint16_t rgb = swap_u16(rgb565[line*camParams.nrOfPixelsPerLine+pixel]);
-/*        uint32_t grayAcc;
-        printf("eddai\n\n");
+#if TEST_FUNCTION
+        uint32_t grayAcc;
         asm volatile("l.nios_rrr %[out1], %[in1], r0, 12 " : [out1] "=r " (grayAcc):[in1] "r" (rgb));
         uint32_t red1 = ((rgb >> 11) & 0x1F) << 3;
         uint32_t green1 = ((rgb >> 5) & 0x3F) << 2;
@@ -55,7 +56,7 @@ int main () {
 
         printf("accelerated value: %x - software value %x \n\n", grayAcc, gray);
         return 0;
-*/
+#else
 #if ACCELERATOR        
         uint32_t gray;
         asm volatile("l.nios_rrr %[out1], %[in1], r0, 12 " : [out1] "=r " (gray):[in1] "r" (rgb));
@@ -64,6 +65,7 @@ int main () {
         uint32_t green1 = ((rgb >> 5) & 0x3F) << 2;
         uint32_t blue1 = (rgb & 0x1F) << 3;
         uint32_t gray = ((red1*54+green1*183+blue1*19) >> 8)&0xFF;
+#endif
 #endif
         grayscale[line*camParams.nrOfPixelsPerLine+pixel] = gray;
       }
