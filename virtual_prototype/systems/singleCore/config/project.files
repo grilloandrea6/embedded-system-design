@@ -54,5 +54,7 @@
 ../../../modules/profilingCustomInstruction/counter.v
 ../../../modules/grayscale/rgb565Grayscalelse.v
 ../../../modules/grayscale/rgb565Grayscalelse_faster.v
+../../../modules/dma/memory.v
+../../../modules/dma/ramDmaCi.v
 ../verilog/or1420SingleCore.v
 
