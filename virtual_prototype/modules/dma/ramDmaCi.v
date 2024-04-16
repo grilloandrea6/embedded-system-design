@@ -44,11 +44,9 @@ reg [2:0] s_stateMachineReg, s_stateMachineNext;
 wire [31:0] dataoutB;
 
 dmaMemory myDmaMemory
-    // TODO: should the write enable include aslo the s_isMyCi?? Doesn't it always write like this with the
-    // right values of A even if the custom block is not called?
             (.clockA(clock),
             .clockB(clock),
-            .writeEnableA(valueA[9] && (valueA[31:10] == 0)),
+            .writeEnableA(valueA[9] && (valueA[31:10] == 0) && s_isMyCi),
             .writeEnableB(1'b0),
             .addressA(valueA[8:0]),
             .addressB(9'b0),
