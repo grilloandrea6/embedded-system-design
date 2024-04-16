@@ -10,7 +10,7 @@ module ramDmaCi #( parameter [7:0] customId = 8'h00 )
 
 wire s_isMyCi = (ciN == customId) ? start : 1'b0;
 wire [31:0] partial;
-assign done = s_isMyCi;
+reg done_int, cycle_count;
 wire [31:0] dataoutB;
 
 dmaMemory myDmaMemory
@@ -29,11 +29,28 @@ dmaMemory myDmaMemory
 
 always @* begin
     if (s_isMyCi == 1'b0) begin
+        cycle_count <= 1'b0;
         result <= 32'd0;
     end
     else begin
-        result <= partial;
+        if (valueA[9] == 1'b1) begin
+            result <= partial;
+            done_int <= 1'b1;
+        end
+        else begin
+            if (cycle_count < 1'b1) begin
+                cycle_count <= 1'b1;
+                done_int <= 1'b0;
+            end
+            else begin 
+                cycle_count <= 1'b0;
+                result <= partial;
+                done_int <= 1'b1;
+            end
+        end
     end
 end
+
+assign done = done_int;
 
 endmodule

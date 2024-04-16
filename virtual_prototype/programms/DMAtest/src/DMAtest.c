@@ -12,7 +12,7 @@ int main () {
 
   for(volatile uint32_t i = 0; i < 500; i++) {
     val = i + 5;
-    ctrl = ctrl_base & i;
+    ctrl = ctrl_base | i;
     printf("writing index %d value %d\n", i, val);
     asm volatile("l.nios_rrr %[out1],%[in1],%[in2], 14" : [out1] "=r"(ret) : [in1] "r"(ctrl), [in2] "r"(val));
     printf("return %d\n", ret);
