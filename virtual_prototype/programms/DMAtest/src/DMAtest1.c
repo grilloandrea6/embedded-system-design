@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <vga.h>
 
-int main () {
+int DMAtest1 () {
   vga_clear();
 
   volatile uint32_t val = 4321;
