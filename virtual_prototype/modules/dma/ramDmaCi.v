@@ -184,18 +184,18 @@ localparam [2:0] END_TRANS1   = 3'd4;
       // Read operation
       REQUEST_BUS_R    : s_dmaStateNext <= (transactionGranted == 1'b1) ? INIT_BURST_R : REQUEST_BUS_R;
       INIT_BURST_R     : s_dmaStateNext <= READ;
-      READ             : s_dmaStateNext <= (busErrorIn == 1'b1) ? IDLE :
+      READ             : s_dmaStateNext <= (busErrorIn == 1'b1) ? ERROR :
                                            (s_burstCountReg == burst_size) ? ( (s_blockCountReg == block_size) ? FINISH : REQUEST_BUS_R ) : READ;
 
       // Write operation    
-      REQUEST_BUS_W    : s_dmaStateNext <= (transactionGranted == 1'b1) ? INIT_BURST_R : REQUEST_BUS_R;
-      INIT_BURST_W     : s_dmaStateNext <= READ;
-      WRITE             : s_dmaStateNext <= (busErrorIn == 1'b1) ? IDLE :
-                                     (s_burstCountReg == burst_size) ? ( (s_blockCountReg == block_size) ? FINISH : REQUEST_BUS_R ) : READ;
+      REQUEST_BUS_W    : s_dmaStateNext <= (transactionGranted == 1'b1) ? INIT_BURST_W : REQUEST_BUS_W;
+      INIT_BURST_W     : s_dmaStateNext <= WRITE;
+      //WRITE            : s_dmaStateNext <= (busErrorIn == 1'b1) ? ERROR :
+      //                                     (s_burstCountReg == burst_size) ? ( (s_blockCountReg == block_size) ? FINISH : REQUEST_BUS_W ) : WRITE;
       
-      
-      END_TRANS1      : s_dmaStateNext <= (s_nrOfPixelsPerLineReg != 9'd0) ? REQUEST_BUS_R : IDLE;
-      default         : s_dmaStateNext <= IDLE;
+      ERROR            : s_dmaStateNext <= IDLE;  
+      FINISH           : s_dmaStateNext <= (s_nrOfPixelsPerLineReg != 9'd0) ? REQUEST_BUS_R : IDLE;
+      default          : s_dmaStateNext <= IDLE;
     endcase
 
 
@@ -212,11 +212,16 @@ end
 assign requestTransaction = (s_dmaState == REQUEST_BUS_R || s_dmaState == REQUEST_BUS_W) ? 1'd1 : 1'd0; // Output request sent to the arbiter
 
 always @(posedge clock) begin
-    // Increment memory address
-    memory_start_address <= (reset == 1'b1) ? 9'b0 : (s_busDataInValidReg == 1'b1 && (s_dmaState == READ || s_dmaState == WRITE)) ? memory_start_address + 1'b1 : memory_start_address;
-    
-    // Increment 
+    s_burstCountReg      <= (reset == 1'b1) ? 8'd0 : (s_dmaState == REQUEST_BUS_R || s_dmaState == REQUEST_BUS_W) ? 8'd0 : s_burstCountReg; // Reset burst counter every time we request bus 
+    s_blockCountReg      <= (reset == 1'b1) ? 10'd0 : (s_dmaState == FINISH || s_dmaState == FINISH) ? 10'd0 : s_blockCountReg; // Reset block counter every time we request bus
 
+    memory_start_address <= (reset == 1'b1) ? 9'b0 : (s_busDataInValidReg == 1'b1 && (s_dmaState == READ || s_dmaState == WRITE)) ? memory_start_address + 1'b1 : memory_start_address; // Increment memory address
+    s_burstCountReg      <= (reset == 1'b1) ? 8'd0 : (s_dmaState == READ || s_dmaState == WRITE) ? s_burstCountReg + 1'b1 : s_burstCountReg; // Increment burst counter
+    s_blockCountReg      <= (reset == 1'b1) ? 10'd0 : (s_dmaState == READ || s_dmaState == WRITE) ? s_blockCountReg + 1'b1 : s_blockCountReg; // Increment block counter
+    //s_addressDataOut     <= (reset == 1'b1) ? 32'd0 : (s_dmaState == REQUEST_BUS_R || s_dmaState == REQUEST_BUS_W) ? bus_start_address : s_addressDataOut; // Set address
+    status_reg[0]        <= (s_dmaState == IDLE) ? 1'b0 : 1'b1   // shows if DMA-transfer is still in progress
+    status_reg[1]        <= (s_dmaState == ERROR) ? 1'b1 : 1'b0  // error flag
+    control_reg[0]       <= (s_dmaState != IDLE) ? 1'b0 : 1'b1   // reset control register
 end
 
 
