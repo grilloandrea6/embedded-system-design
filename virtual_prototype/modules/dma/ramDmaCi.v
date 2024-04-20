@@ -7,31 +7,34 @@ module ramDmaCi #( parameter [7:0] customId = 8'h00 )
                     input  wire  [7:0]  ciN,
 
                     // Define bus interface
+                    // Arbiter
+                    output wire         requestTransaction,
+                    input wire          transactionGranted,
+//begintransaction in?? readnotwritein??
                     // Input
                     input wire [31:0]   addressDataIn,
-                    input wire [7:0]    burstSizeIn,
-                    input wire          beginTransactionIn,
-                                        endTransactionIn,
+                    input wire          endTransactionIn,
                                         dataValidIn,
+                                        busyIn,                 //TODO ADD IN MAIN FILE
                                         busErrorIn,
-                                        transactionGranted,
-                                        readNotWriteIn,
                     
                     // Output
                     output wire [31:0]  addressDataOut,
-                    output wire [7:0]   s_burstSizeOut,
-                    output wire         requestTransaction, // DONE
-                                        beginTransactionOut, // DONE
-                                        endTransactionOut,  // what should we do with this?
-                                        dataValidOut,
-                                        readNotWriteOut, // what should we do with this?
-
+                    output reg [3:0]   byteEnablesOut,            //TODO ADD IN MAIN FILE
+                    output reg [7:0]   burstSizeOut, //todo
+                    output reg         readNotWriteOut, 
+                    output wire        beginTransactionOut, // DONE
+                                       endTransactionOut,
+                                       dataValidOut,
+                                        
                     output wire         done,
                     output reg  [31:0]  result);
 
 wire s_startCi = (ciN == customId) && start;
 wire [31:0] partial;
 reg done_int, s_reading = 1'b0;
+assign done = done_int;
+
 
 // Registers with info needed by DMA
 reg [31:0] bus_start_address;
@@ -40,8 +43,6 @@ reg [9:0]  block_size;
 reg [7:0]  burst_size;
 reg [1:0]  status_reg;
 reg [1:0]  control_reg;
-
-
 
 wire [31:0] dataoutB;
 
@@ -127,27 +128,6 @@ end
  
 
 
- 
- // Definitions
- reg    s_startTransactionOutReg;
- reg    s_dataValidOutReg;
- reg    s_busDataInValidReg;
- 
- 
- always @(posedge clock)
-    begin
-        s_startTransactionOutReg <= (s_dmaState == INIT_BURST_R || s_dmaState == INIT_BURST_W) ? 1'b1 : 1'b0;
-        s_busDataInValidReg      <= dataValidIn;
-
-        s_dataValidOutReg        <= 1'b1; // always 1, we're not able to detect errors
-    end
-
-
-assign beginTransactionOut = s_startTransactionOutReg;
-assign burstSizeOut = burst_size;
-
-
-
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *
  * DMA controller - FSM
@@ -157,115 +137,93 @@ assign burstSizeOut = burst_size;
 reg [3:0]  s_dmaState, s_dmaStateNext;
 reg [7:0]  s_burstCountReg;
 reg [9:0]  s_blockCountReg;
+reg        s_startTransactionReg;
+reg        s_dataValidOutReg;
+reg        s_busDataInValidReg;
+ 
+assign beginTransactionOut = s_startTransactionReg;
+// *** Update outout signals based on current state
+assign requestTransaction = (s_dmaState == REQUEST_BUS_R || s_dmaState == REQUEST_BUS_W) ? 1'd1 : 1'd0; // Output request sent to the arbiter
+
+
 
 // States
 localparam [3:0] IDLE            = 3'd0,
                  REQUEST_BUS_R   = 3'd1,
                  INIT_BURST_R    = 3'd2,
                  READ            = 3'd3,
-
-                 REQUEST_BUS_W   = 3'd4,
-                 INIT_BURST_W    = 3'd5,
-                 WRITE           = 3'd6,
-
-                 INIT_BURST_W    = 3'd5,
-localparam [2:0] END_TRANS1   = 3'd4;
+                 FINISH_BURST    = 3'd4,
+                 READ_DONE       = 3'd5,
+                 ERROR           = 3'd6;
 
 
 // *** Decide next state based on current
-  always @*
+always @*
     case (s_dmaState)
-      IDLE            : s_dmaStateNext <= (control_reg[0] == 1'b1) ? ( (readNotWriteIn == 1) ? REQUEST_BUS_R : REQUEST_BUS_W ) : IDLE;
-      
-      // Read operation
-      REQUEST_BUS_R    : s_dmaStateNext <= (transactionGranted == 1'b1) ? INIT_BURST_R : REQUEST_BUS_R;
-      INIT_BURST_R     : s_dmaStateNext <= READ;
-      READ             : s_dmaStateNext <= (busErrorIn == 1'b1) ? ERROR :
-                                           (s_burstCountReg == burst_size) ? ( (s_blockCountReg == block_size) ? FINISH : REQUEST_BUS_R ) : READ;
+        IDLE            : s_dmaStateNext <= (control_reg[0] == 1'b1) ? REQUEST_BUS_R : IDLE;
+        
+        // Read operation
+        REQUEST_BUS_R    : s_dmaStateNext <= (transactionGranted == 1'b1) ? INIT_BURST_R : REQUEST_BUS_R;
+        INIT_BURST_R     : s_dmaStateNext <= READ;
 
-      // Write operation    
-      REQUEST_BUS_W    : s_dmaStateNext <= (transactionGranted == 1'b1) ? INIT_BURST_W : REQUEST_BUS_W;
-      INIT_BURST_W     : s_dmaStateNext <= WRITE;
-      //WRITE            : s_dmaStateNext <= (busErrorIn == 1'b1) ? ERROR :
-      //                                     (s_burstCountReg == burst_size) ? ( (s_blockCountReg == block_size) ? FINISH : REQUEST_BUS_W ) : WRITE;
-      
-      ERROR            : s_dmaStateNext <= IDLE;  
-      FINISH           : s_dmaStateNext <= (s_nrOfPixelsPerLineReg != 9'd0) ? REQUEST_BUS_R : IDLE;
-      default          : s_dmaStateNext <= IDLE;
+        READ             : s_dmaStateNext <= (busErrorIn == 1'b1 && endTransactionIn == 1'b0) ? ERROR :
+                                            (busErrorIn == 1'b1) ? IDLE :
+                                            (s_endTransactionInReg == 1'b1) ? FINISH_BURST : READ;                        // ToDo define reg and assign to endTransactionIn & ~reset;
+
+        FINISH_BURST     : s_dmaStateNext <= (s_blockCountReg == block_size) ? FINISH : REQUEST_BUS_R;
+        
+        READ_DONE        : s_dmaStateNext <= IDLE;
+
+        ERROR            : s_dmaStateNext <= (s_endTransactionInReg == 1'b1) ? IDLE : ERROR;
+
+        default          : s_dmaStateNext <= IDLE;
     endcase
 
-
-
-// *** Move to next state
 always @(posedge clock) begin
-    if (reset == 1'b1) s_dmaState <= IDLE;
-    else s_dmaState <= s_dmaStateNext;
-end
+    s_dmaState               <= (reset == 1'd1) ? IDLE : s_dmaStateNext;
+    s_startTransactionReg   <= (s_dmaState == INIT_BURST_R) ? 1'b1 : 1'b0;
+    s_busDataInValidReg     <= dataValidIn;
+    byteEnablesOut          <= (s_dmaState == INIT) ? 4'hF : 4'd0;
 
-
-
-// *** Update outout signals based on current state
-assign requestTransaction = (s_dmaState == REQUEST_BUS_R || s_dmaState == REQUEST_BUS_W) ? 1'd1 : 1'd0; // Output request sent to the arbiter
-
-always @(posedge clock) begin
-    s_burstCountReg      <= (reset == 1'b1) ? 8'd0 : (s_dmaState == REQUEST_BUS_R || s_dmaState == REQUEST_BUS_W) ? 8'd0 : s_burstCountReg; // Reset burst counter every time we request bus 
+    s_dataValidOutReg        <= 1'b1; // always 1, we're not able to detect errors
     s_blockCountReg      <= (reset == 1'b1) ? 10'd0 : (s_dmaState == FINISH || s_dmaState == FINISH) ? 10'd0 : s_blockCountReg; // Reset block counter every time we request bus
 
     memory_start_address <= (reset == 1'b1) ? 9'b0 : (s_busDataInValidReg == 1'b1 && (s_dmaState == READ || s_dmaState == WRITE)) ? memory_start_address + 1'b1 : memory_start_address; // Increment memory address
-    s_burstCountReg      <= (reset == 1'b1) ? 8'd0 : (s_dmaState == READ || s_dmaState == WRITE) ? s_burstCountReg + 1'b1 : s_burstCountReg; // Increment burst counter
     s_blockCountReg      <= (reset == 1'b1) ? 10'd0 : (s_dmaState == READ || s_dmaState == WRITE) ? s_blockCountReg + 1'b1 : s_blockCountReg; // Increment block counter
     //s_addressDataOut     <= (reset == 1'b1) ? 32'd0 : (s_dmaState == REQUEST_BUS_R || s_dmaState == REQUEST_BUS_W) ? bus_start_address : s_addressDataOut; // Set address
     status_reg[0]        <= (s_dmaState == IDLE) ? 1'b0 : 1'b1   // shows if DMA-transfer is still in progress
     status_reg[1]        <= (s_dmaState == ERROR) ? 1'b1 : 1'b0  // error flag
     control_reg[0]       <= (s_dmaState != IDLE) ? 1'b0 : 1'b1   // reset control register
+
 end
-
-
 
 
 // Update signals (address, burst size, block size)
 always @* begin
     case (s_dmaState)
         IDLE            : begin
-                            s_burstCountReg <= 8'd0;
                             s_blockCountReg <= 10'd0;
                             s_addressDataOut <= 32'd0;
-                            s_burstSizeOut <= 8'd0;
                             //s_dataValidOut <= 1'b0; ??
-                            s_startTransactionOutReg <= 1'b0;
+                            s_startTransactionReg <= 1'b0;
                         end
         REQUEST_BUS_R   : begin
                             s_addressDataOut <= bus_start_address;
-                            s_burstSizeOut <= burst_size;
                         end
         INIT_BURST_R    : begin
                             s_addressDataOut <= memory_start_address;
-                            s_burstSizeOut <= burst_size;
                         end
         READ            : begin
                             s_addressDataOut <= s_addressDataOut + 32'd4;
-                            s_burstSizeOut <= burst_size;
                         end
-        REQUEST_BUS_W   : begin
-                            s_addressDataOut <= bus_start_address;
-                            s_burstSizeOut <= burst_size;
-                        end
-        INIT_BURST_W    : begin
-                            s_addressDataOut <= memory_start_address;
-                            s_burstSizeOut <= burst_size;
-                        end
-        WRITE           : begin
-                            s_addressDataOut <= s_addressDataOut + 32'd4;
-                            s_burstSizeOut <= burst_size;
+
+        ERROR           : begin
+                            s_addressDataOut <= 32'd0;
                         end
         default         : begin
                             s_addressDataOut <= 32'd0;
-                            s_burstSizeOut <= 8'd0;
                         end
     endcase
 end
-
-
-assign done = done_int;
 
 endmodule
