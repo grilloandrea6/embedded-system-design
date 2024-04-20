@@ -21,7 +21,7 @@ module ramDmaCi #( parameter [7:0] customId = 8'h00 )
                     output wire [31:0]  addressDataOut,
                     output wire [7:0]   s_burstSizeOut,
                     output wire         requestTransaction, // DONE
-                                        beginTransActionOut, // DONE
+                                        beginTransactionOut, // DONE
                                         endTransactionOut,  // what should we do with this?
                                         dataValidOut,
                                         readNotWriteOut, // what should we do with this?
@@ -31,7 +31,7 @@ module ramDmaCi #( parameter [7:0] customId = 8'h00 )
 
 wire s_startCi = (ciN == customId) && start;
 wire [31:0] partial;
-reg done_int, s_i;
+reg done_int, s_reading = 1'b0;
 
 // Registers with info needed by DMA
 reg [31:0] bus_start_address;
@@ -47,8 +47,8 @@ wire [31:0] dataoutB;
 
 dmaMemory myDmaMemory
             (.clockA(clock),
-            .clockB(clock),
-            .writeEnableA(valueA[9] && (valueA[31:10] == 0) && s_isMyCi),
+            .clockB(~clock),
+            .writeEnableA(valueA[9] && (valueA[31:10] == 0) && s_startCi),
             .writeEnableB(1'b0),
             .addressA(valueA[8:0]),
             .addressB(9'b0),
@@ -61,7 +61,7 @@ dmaMemory myDmaMemory
 
 // Read/write in SSRAM or DMA control registers
 always @(posedge clock) begin
-    if (s_startCi == 1'b0) begin
+    if (s_startCi) begin
         // either read1 or write
         if(valueA[9] == 1'b1) begin
             // Write
@@ -80,16 +80,13 @@ always @(posedge clock) begin
                     control_reg <= valueB[1:0];
             endcase
             done_int <= 1'b1;
-            result <= 32'b0;
-            s_reading <= 1'b0;
         end
         else begin
             // read1
             s_reading <= 1'b1;
-        end
-
-        
-    end else begin
+        end    
+    end 
+    else begin
         // either read2 or nothing
         if(s_reading == 1'b1) begin
             // read2
@@ -114,7 +111,6 @@ always @(posedge clock) begin
             // nothing
             result <= 32'b0;
             done_int <= 1'b0;
-            s_reading <= 1'b0;
         end
 
     end

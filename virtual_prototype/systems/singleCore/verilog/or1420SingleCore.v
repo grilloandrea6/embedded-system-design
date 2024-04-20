@@ -484,17 +484,17 @@ module or1420SingleCore ( input wire         clock12MHz,
                 .addressDataIn(s_addressData),
                 .burstSizeIn(s_burstSize),
                 .beginTransactionIn(s_beginTransaction),
-                .endTransActionIn(s_endTransaction),
+                .endTransactionIn(s_endTransaction),
                 .dataValidIn(s_dataValid),
                 .busErrorIn(s_busError),
                 .transactionGranted(s_dmaBusGranted),
-                .readNotWriteIn(s_readNotWrite)
+                .readNotWriteIn(s_readNotWrite),
 
                 // Output
-                .addressDataOut(s_dmaAddressData)
-                .burstSizeOut(s_dmaBurstSize),
+                .addressDataOut(s_dmaAddressData),
+                .s_burstSizeOut(s_dmaBurstSize),
                 .requestTransaction(s_dmaRequestBus), //
-                .beginTransActionOut(s_dmaBeginTransaction),
+                .beginTransactionOut(s_dmaBeginTransaction),
                 .endTransactionOut(s_dmaEndTransaction),
                 .dataValidOut(s_dmaDataValid),
                 .readNotWriteOut(s_dmaReadNotWrite),
