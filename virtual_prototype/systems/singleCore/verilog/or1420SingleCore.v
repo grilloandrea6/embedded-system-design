@@ -464,6 +464,13 @@ module or1420SingleCore ( input wire         clock12MHz,
    * DMA Custom instruction
    *
    */
+
+  wire        s_dmaRequestBus, s_dmaBusGranted, s_dmaBeginTransaction;
+  wire        s_dmaEndTransaction, s_dmaDataValid, s_dmaReadNotWrite;
+  wire [7:0]  s_dmaBurstSize;
+  wire [31:0] s_dmaAddressData;
+  // Do we need byteEnable?
+
   ramDmaCi #(.customId(8'd14)) myRamDmaCi
                 (.start(s_cpu1CiStart),
                 .valueA(s_cpu1CiDataA),
@@ -480,14 +487,17 @@ module or1420SingleCore ( input wire         clock12MHz,
                 .endTransActionIn(s_endTransaction),
                 .dataValidIn(s_dataValid),
                 .busErrorIn(s_busError),
+                .transactionGranted(s_dmaBusGranted),
+                .readNotWriteIn(s_readNotWrite)
 
                 // Output
                 .addressDataOut(s_dmaAddressData)
-                .burstSizeOut(),
+                .burstSizeOut(s_dmaBurstSize),
+                .requestTransaction(s_dmaRequestBus), //
                 .beginTransActionOut(s_dmaBeginTransaction),
                 .endTransactionOut(s_dmaEndTransaction),
                 .dataValidOut(s_dmaDataValid),
-                .burstSizeOut(s_dmaBurstSize),
+                .readNotWriteOut(s_dmaReadNotWrite),
 
                 .done(s_ram_dma_ci_done),
                 .result(s_ram_dma_ci_result));
@@ -689,12 +699,14 @@ module or1420SingleCore ( input wire         clock12MHz,
  assign s_busRequests[30] = s_cpu1IcacheRequestBus;
  assign s_busRequests[29] = s_hdmiRequestBus;
  assign s_busRequests[28] =  s_camReqBus;
- assign s_busRequests[27:0] = 29'd0;
+ assign s_busRequests[27] = s_dmaRequestBus; //Added for DMA operations
+ assign s_busRequests[26:0] = 27'd0;
  
  assign s_cpu1DcacheBusAccessGranted = s_busGrants[31];
  assign s_cpu1IcacheBusAccessGranted = s_busGrants[30];
  assign s_hdmiBusgranted             = s_busGrants[29];
  assign s_camAckBus                  = s_busGrants[28];
+ assign s_dmaBusGranted              = s_busGrants[27]; //Added for DMA operations
 
  busArbiter arbiter ( .clock(s_systemClock),
                       .reset(s_reset),
@@ -722,7 +734,7 @@ module or1420SingleCore ( input wire         clock12MHz,
  assign s_addressData      = s_cpu1AddressData | s_biosAddressData | s_uartAddressData | s_sdramAddressData | s_hdmiAddressData |
                              s_flashAddressData | s_camAddressData | s_dmaAddressData; // Added s_dmaAddressData
  assign s_byteEnables      = s_cpu1byteEnables | s_hdmiByteEnables | s_camByteEnables;
- assign s_readNotWrite     = s_cpu1ReadNotWrite | s_hdmiReadNotWrite;
+ assign s_readNotWrite     = s_cpu1ReadNotWrite | s_hdmiReadNotWrite | s_dmaReadNotWrite; // Added s_dmaReadNotWrite
  assign s_dataValid        = s_cpu1DataValid | s_biosDataValid | s_uartDataValid | s_sdramDataValid | s_hdmiDataValid | 
                              s_flashDataValid | s_camDataValid | s_dmaDataValid; // Added s_dmaDataValid
  assign s_busy             = s_sdramBusy;

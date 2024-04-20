@@ -14,32 +14,34 @@ module ramDmaCi #( parameter [7:0] customId = 8'h00 )
                                         endTransactionIn,
                                         dataValidIn,
                                         busErrorIn,
+                                        transactionGranted,
+                                        readNotWriteIn,
                     
                     // Output
                     output wire [31:0]  addressDataOut,
-                    output wire [7:0]   burstSizeOut,
-                    output wire         beginTransActionOut,
-                                        endTransactionOut,
+                    output wire [7:0]   s_burstSizeOut,
+                    output wire         requestTransaction, // DONE
+                                        beginTransActionOut, // DONE
+                                        endTransactionOut,  // what should we do with this?
                                         dataValidOut,
-
+                                        readNotWriteOut, // what should we do with this?
 
                     output wire         done,
                     output reg  [31:0]  result);
 
-wire s_isMyCi = (ciN == customId) ? start : 1'b0;
+wire s_startCi = (ciN == customId) && start;
 wire [31:0] partial;
-reg done_int, cycle_count;
+reg done_int, s_i;
 
 // Registers with info needed by DMA
 reg [31:0] bus_start_address;
-reg [8:0] memory_start_address;
-reg [9:0] block_size;
-reg [7:0] burst_size;
-reg [1:0] status_reg;
-reg control_reg;
+reg [8:0]  memory_start_address;
+reg [9:0]  block_size;
+reg [7:0]  burst_size;
+reg [1:0]  status_reg;
+reg [1:0]  control_reg;
 
-// FSM registers
-reg [2:0] s_stateMachineReg, s_stateMachineNext;
+
 
 wire [31:0] dataoutB;
 
@@ -58,159 +60,208 @@ dmaMemory myDmaMemory
 
 
 // Read/write in SSRAM or DMA control registers
-always @* begin
-    if (s_isMyCi == 1'b0) begin.addressDataIn(s_addressData),
-            .byteEnablesIn(s_byteEnables),
-            .burstSizeIn(s_burstSize),
-            
-        // 1. Read/Write from memory location
-        3'b000  :   begin
-                        if (valueA[9] == 1'b1) begin // Write in 1 cycle
-                            result <= partial;
-                            done_int <= 1'b1;
-                        end
-                        else begin
-                            if (cycle_count < 1'b1) begin   // Read in 2 cycles
-                                cycle_count <= 1'b1;
-                                done_int <= 1'b0;
-                            end
-                            else begin 
-                                cycle_count <= 1'b0;
-                                result <= partial;
-                                done_int <= 1'b1;
-                            end
-                        end
-                    end
+always @(posedge clock) begin
+    if (s_startCi == 1'b0) begin
+        // either read1 or write
+        if(valueA[9] == 1'b1) begin
+            // Write
+            case (valueA[12:10])
+                //3'b000  : // Write memory location
+                    // just nothing
+                3'b001  : // Write bus start address
+                    bus_start_address <= valueB[31:0];
+                3'b010  : // Write memory start address
+                    memory_start_address <= valueB[8:0];
+                3'b011  : // Write block size
+                    block_size <= valueB[9:0];
+                3'b100  : // Write burst size
+                    burst_size <= valueB[7:0];
+                3'b101  : // Write control register
+                    control_reg <= valueB[1:0];
+            endcase
+            done_int <= 1'b1;
+            result <= 32'b0;
+            s_reading <= 1'b0;
+        end
+        else begin
+            // read1
+            s_reading <= 1'b1;
+        end
+
         
-        // 2. Read/Write the bus start address of the DMA-transfer
-        3'b001  :   begin
-                        if (valueA[9] == 1'b1) begin // Write in 1 cycle
-                            bus_start_address <= valueB[31:0];
-                            done_int <= 1'b1;
-                        end
-                        else begin
-                            if (cycle_count < 1'b1) begin   // Read in 2 cycles
-                                cycle_count <= 1'b1;
-                                done_int <= 1'b0;
-                            end
-                            else begin 
-                                cycle_count <= 1'b0;
-                                result <= bus_start_address;
-                                done_int <= 1'b1;
-                            end
-                        end
-                    end
+    end else begin
+        // either read2 or nothing
+        if(s_reading == 1'b1) begin
+            // read2
+            case (valueA[12:10])
+                3'b000  : // Read memory location
+                    result <= partial;
+                3'b001  : // Read bus start address
+                    result <= bus_start_address;
+                3'b010  : // Read memory start address
+                    result <= memory_start_address;
+                3'b011  : // Read block size
+                    result <= block_size;
+                3'b100  : // Write burst size
+                    result <= burst_size;
+                3'b101  : // Read status register
+                    result <= status_reg;
+            endcase
 
-        // 3. Read/Write the memory start address of the DMA-transfer
-        3'b010  :   begin
-                        if (valueA[9] == 1'b1) begin // Write in 1 cycle
-                            memory_start_address <= valueB[8:0];
-                            done_int <= 1'b1;
-                        end
-                        else begin
-                            if (cycle_count < 1'b1) begin   // Read in 2 cycles
-                                cycle_count <= 1'b1;
-                                done_int <= 1'b0;
-                            end
-                            else begin 
-                                cycle_count <= 1'b0;
-                                result <= memory_start_address;
-                                done_int <= 1'b1;
-                            end
-                        end
-                    end
+            done_int <= 1'b1;
+            s_reading <= 1'b0;
+        end else begin
+            // nothing
+            result <= 32'b0;
+            done_int <= 1'b0;
+            s_reading <= 1'b0;
+        end
 
-        // 4. Read/Write the block size of the DMA-transfer
-        3'b011  :   begin
-                        if (valueA[9] == 1'b1) begin // Write in 1 cycle
-                            block_size <= valueB[9:0];
-                            done_int <= 1'b1;
-                        end
-                        else begin
-                            if (cycle_count < 1'b1) begin   // Read in 2 cycles
-                                cycle_count <= 1'b1;
-                                done_int <= 1'b0;
-                            end
-                            else begin 
-                                cycle_count <= 1'b0;
-                                result <= block_size;
-                                done_int <= 1'b1;
-                            end.addressDataIn(s_addressData),
-            .byteEnablesIn(s_byteEnables),
-            .burstSizeIn(s_burstSize),
-                        end
-                    end
-
-        // 5. Read/Write the burst size used for the DMA-transfer
-        3'b100  :   begin
-                        if (valueA[9] == 1'b1) begin // Write in 1 cycle
-                            burst_size <= valueB[7:0];
-                            done_int <= 1'b1;
-                        end
-                        else begin
-                            if (cycle_count < 1'b1) begin   // Read in 2 cycles
-                                cycle_count <= 1'b1;
-                                done_int <= 1'b0;
-                            end
-                            else begin 
-                                cycle_count <= 1'b0;
-                                result <= burst_size;
-                                done_int <= 1'b1;
-                            end
-                        end
-                    end
-
-        // 6. Read the status register / Write the control register
-        3'b100  :   begin
-                        if (valueA[9] == 1'b1) begin // Write in 1 cycle
-                            burst_size <= valueB[7:0];
-                            done_int <= 1'b1;
-                        end
-                        else begin
-                            if (cycle_count < 1'b1) begin   // Read in 2 cycles
-                                cycle_count <= 1'b1;
-                                done_int <= 1'b0;
-                            end
-                            else begin 
-                                cycle_count <= 1'b0;
-                                result <= burst_size;
-                                done_int <= 1'b1;
-                            end
-                        end
-                    end
-
-        endcase  
     end
 end
 
 
-// Finite State Machine - DMA controller
-localparam [2:0] IDLE         = 3'd0;
-localparam [2:0] REQUEST_BUS1 = 3'd1;
-localparam [2:0] INIT_BURST1  = 3'd2;
-localparam [2:0] DO_BURST1    = 3'd3;
+
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *
+ * BUS signals
+ *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ 
+
+
+ 
+ // Definitions
+ reg    s_startTransactionOutReg;
+ reg    s_dataValidOutReg;
+ reg    s_busDataInValidReg;
+ 
+ 
+ always @(posedge clock)
+    begin
+        s_startTransactionOutReg <= (s_dmaState == INIT_BURST_R || s_dmaState == INIT_BURST_W) ? 1'b1 : 1'b0;
+        s_busDataInValidReg      <= dataValidIn;
+
+        s_dataValidOutReg        <= 1'b1; // always 1, we're not able to detect errors
+    end
+
+
+assign beginTransactionOut = s_startTransactionOutReg;
+assign burstSizeOut = burst_size;
+
+
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *
+ * DMA controller - FSM
+ *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+reg [3:0]  s_dmaState, s_dmaStateNext;
+reg [7:0]  s_burstCountReg;
+reg [9:0]  s_blockCountReg;
+
+// States
+localparam [3:0] IDLE            = 3'd0,
+                 REQUEST_BUS_R   = 3'd1,
+                 INIT_BURST_R    = 3'd2,
+                 READ            = 3'd3,
+
+                 REQUEST_BUS_W   = 3'd4,
+                 INIT_BURST_W    = 3'd5,
+                 WRITE           = 3'd6,
+
+                 INIT_BURST_W    = 3'd5,
 localparam [2:0] END_TRANS1   = 3'd4;
-localparam [2:0] END_TRANS2   = 3'd5;
 
 
-// Decide next state based on current
+// *** Decide next state based on current
   always @*
-    case (s_stateMachineReg)
-      IDLE            : s_dmaStateNext <= xxx ? REQUEST_BUS1 : IDLE;
-      REQUEST_BUS1    : s_dmaStateNext <= xxx ? INIT_BURST1 : REQUEST_BUS1;
-      INIT_BURST1     : s_dmaStateNext <= DO_BURST1;
-      DO_BURST1       : s_dmaStateNext <= (busErrorIn == 1'b1) ? END_TRANS2 :
-                                              (s_burstCountReg[8] == 1'b1 && busyIn == 1'b0) ? END_TRANS1 : DO_BURST1;
-      END_TRANS1      : s_dmaStateNext <= (s_nrOfPixelsPerLineReg != 9'd0) ? REQUEST_BUS1 : IDLE;
+    case (s_dmaState)
+      IDLE            : s_dmaStateNext <= (control_reg[0] == 1'b1) ? ( (readNotWriteIn == 1) ? REQUEST_BUS_R : REQUEST_BUS_W ) : IDLE;
+      
+      // Read operation
+      REQUEST_BUS_R    : s_dmaStateNext <= (transactionGranted == 1'b1) ? INIT_BURST_R : REQUEST_BUS_R;
+      INIT_BURST_R     : s_dmaStateNext <= READ;
+      READ             : s_dmaStateNext <= (busErrorIn == 1'b1) ? IDLE :
+                                           (s_burstCountReg == burst_size) ? ( (s_blockCountReg == block_size) ? FINISH : REQUEST_BUS_R ) : READ;
+
+      // Write operation    
+      REQUEST_BUS_W    : s_dmaStateNext <= (transactionGranted == 1'b1) ? INIT_BURST_R : REQUEST_BUS_R;
+      INIT_BURST_W     : s_dmaStateNext <= READ;
+      WRITE             : s_dmaStateNext <= (busErrorIn == 1'b1) ? IDLE :
+                                     (s_burstCountReg == burst_size) ? ( (s_blockCountReg == block_size) ? FINISH : REQUEST_BUS_R ) : READ;
+      
+      
+      END_TRANS1      : s_dmaStateNext <= (s_nrOfPixelsPerLineReg != 9'd0) ? REQUEST_BUS_R : IDLE;
       default         : s_dmaStateNext <= IDLE;
     endcase
 
 
 
+// *** Move to next state
+always @(posedge clock) begin
+    if (reset == 1'b1) s_dmaState <= IDLE;
+    else s_dmaState <= s_dmaStateNext;
+end
 
+
+
+// *** Update outout signals based on current state
+assign requestTransaction = (s_dmaState == REQUEST_BUS_R || s_dmaState == REQUEST_BUS_W) ? 1'd1 : 1'd0; // Output request sent to the arbiter
+
+always @(posedge clock) begin
+    // Increment memory address
+    memory_start_address <= (reset == 1'b1) ? 9'b0 : (s_busDataInValidReg == 1'b1 && (s_dmaState == READ || s_dmaState == WRITE)) ? memory_start_address + 1'b1 : memory_start_address;
+    
+    // Increment 
+
+end
+
+
+
+
+// Update signals (address, burst size, block size)
 always @* begin
-    if 
-
+    case (s_dmaState)
+        IDLE            : begin
+                            s_burstCountReg <= 8'd0;
+                            s_blockCountReg <= 10'd0;
+                            s_addressDataOut <= 32'd0;
+                            s_burstSizeOut <= 8'd0;
+                            //s_dataValidOut <= 1'b0; ??
+                            s_startTransactionOutReg <= 1'b0;
+                        end
+        REQUEST_BUS_R   : begin
+                            s_addressDataOut <= bus_start_address;
+                            s_burstSizeOut <= burst_size;
+                        end
+        INIT_BURST_R    : begin
+                            s_addressDataOut <= memory_start_address;
+                            s_burstSizeOut <= burst_size;
+                        end
+        READ            : begin
+                            s_addressDataOut <= s_addressDataOut + 32'd4;
+                            s_burstSizeOut <= burst_size;
+                        end
+        REQUEST_BUS_W   : begin
+                            s_addressDataOut <= bus_start_address;
+                            s_burstSizeOut <= burst_size;
+                        end
+        INIT_BURST_W    : begin
+                            s_addressDataOut <= memory_start_address;
+                            s_burstSizeOut <= burst_size;
+                        end
+        WRITE           : begin
+                            s_addressDataOut <= s_addressDataOut + 32'd4;
+                            s_burstSizeOut <= burst_size;
+                        end
+        default         : begin
+                            s_addressDataOut <= 32'd0;
+                            s_burstSizeOut <= 8'd0;
+                        end
+    endcase
 end
 
 
