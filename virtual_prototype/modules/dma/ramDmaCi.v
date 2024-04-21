@@ -15,7 +15,7 @@ module ramDmaCi #( parameter [7:0] customId = 8'h00 )
                     input wire          endTransactionIn,
                                         dataValidIn,
                                         busErrorIn,
-                                        busy,
+                                        busyIn,
                     
                     // Output
                     output wire [31:0]  addressDataOut,
@@ -167,7 +167,7 @@ assign endTransactionOut   = s_endTransactionOutReg;
 assign addressDataOut      = s_busDataOutReg;
 assign beginTransactionOut = s_beginTransactionOutReg;
 assign dataValidOut = s_dataValidOutReg;
-assign requestTransaction = (s_dmaState == REQUEST_BUS_R) ? 1'd1 : 1'd0; // Output request sent to the arbiter
+assign requestTransaction = (s_dmaState == REQUEST_BUS_R || s_dmaState == REQUEST_BUS_W) ? 1'd1 : 1'd0; // Output request sent to the arbiter
 
 
 // *** Decide next state based on current
@@ -220,14 +220,11 @@ always @(posedge clock) begin
 
     s_busDataInValidReg     <= dataValidIn;
     s_busDataInReg          <= {addressDataIn[7:0], addressDataIn[15:8], addressDataIn[23:16], addressDataIn[31:24]};
-    s_busyReg               <= busy;
-
-    // - todo for writing we will need it ? always 4?
-    byteEnablesOut          <= (s_dmaState == WRITE) ? 4'hF : 4'd0;
+    s_busyReg               <= busyIn;
 
     // send address when we start read or write transaction, if WRITE send data
     s_busDataOutReg         <= (s_dmaState == INIT_BURST_R || s_dmaState == INIT_BURST_W) ? s_busAddressReg : 
-                               (s_dmaState == WRITE) ? dataoutB : 32'd0;
+                               (s_dmaState == WRITE) ? {dataoutB[7:0], dataoutB[15:8], dataoutB[23:16], dataoutB[31:24]} : 32'd0;
 
     // MASTER's outputs: start transaction
     s_beginTransactionOutReg <= (s_dmaState == INIT_BURST_R || s_dmaState == INIT_BURST_W) ? 1'd1 : 1'd0;
