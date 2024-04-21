@@ -185,7 +185,7 @@ always @*
                                             (busErrorIn == 1'b1) ? IDLE :
                                             (s_endTransactionInReg == 1'b1) ? FINISH : READ;                   
 
-        FINISH     : s_dmaStateNext <= (s_blockCountReg >= block_size) ? IDLE : REQUEST_BUS_R;
+        FINISH     : s_dmaStateNext <= (s_blockCountReg == 10'd0) ? IDLE : REQUEST_BUS_R;
 
         ERROR            : s_dmaStateNext <= (s_endTransactionInReg == 1'b1) ? IDLE : ERROR;
 
@@ -206,8 +206,8 @@ always @(posedge clock) begin
     
 
     // reset or increment burst count
-    s_blockCountReg             <= (reset == 1'd1 || s_dmaState == IDLE) ? 10'd0 : 
-                                (s_dmaState == READ && s_busDataInValidReg == 1'd1) ? s_blockCountReg + 10'd1 : s_blockCountReg;
+    s_blockCountReg             <= (reset == 1'd1 || s_dmaState == IDLE) ? block_size : 
+                                (s_dmaState == READ && s_busDataInValidReg == 1'd1) ? s_blockCountReg - 10'd1 : s_blockCountReg;
 
     // end transaction read from slave or reset
     s_endTransactionInReg   <= endTransactionIn & ~reset;
@@ -224,7 +224,7 @@ always @(posedge clock) begin
     // MASTER's outputs: start transaction
     s_beginTransactionOutReg <= (s_dmaState == INIT_BURST_R) ? 1'd1 : 1'd0;
     readNotWriteOut          <= (s_dmaState == INIT_BURST_R) ? 1'd1 : 1'd0; //   (todo for writing we will need it
-    burstSizeOut             <= (s_dmaState == INIT_BURST_R) ? burst_size : 8'd0;
+    burstSizeOut             <= (s_dmaState == INIT_BURST_R) ? (burst_size < (s_blockCountReg - 1)) ? burst_size : (s_blockCountReg - 1) : 8'd0;
 
     // status reg
     status_reg[0]        <= (s_dmaState == IDLE) ? 1'b0 : 1'b1;   // shows if DMA-transfer is still in progress
