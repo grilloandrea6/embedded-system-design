@@ -15,6 +15,7 @@ module ramDmaCi #( parameter [7:0] customId = 8'h00 )
                     input wire          endTransactionIn,
                                         dataValidIn,
                                         busErrorIn,
+                                        busy,
                     
                     // Output
                     output wire [31:0]  addressDataOut,
@@ -123,15 +124,6 @@ end
 
 
 
-
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *
- * BUS signals
- *
- * * * * * * * * * * * * * * * * * * * * * * * * * * * */
- 
-
-
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *
  * DMA controller - FSM
@@ -144,8 +136,11 @@ localparam [3:0] IDLE            = 4'd0,
                  REQUEST_BUS_R   = 4'd2,
                  INIT_BURST_R    = 4'd3,
                  READ            = 4'd4,
-                 FINISH          = 4'd5,
-                 ERROR           = 4'd6;
+                 REQUEST_BUS_W   = 4'd5,
+                 INIT_BURST_W    = 4'd6,
+                 WRITE           = 4'd7,
+                 FINISH          = 4'd8,
+                 ERROR           = 4'd9;
 
 
 reg [3:0]  s_dmaState = IDLE, s_dmaStateNext = IDLE;
@@ -155,6 +150,8 @@ reg        s_startTransactionReg    = 1'b0,
            s_busDataInValidReg      = 1'b0,
            s_beginTransactionOutReg = 1'b0,
            s_endTransactionInReg    = 1'b0;
+           s_busyReg                = 1'b0;
+           s_dataValidOutReg        = 1'b0;
 reg [31:0] s_busDataOutReg          = 32'd0,
            s_busDataInReg           = 32'd0;
 
@@ -166,16 +163,16 @@ reg [8:0]  s_memoryAddressReg       = 9'd0;
 assign endTransactionOut   = 1'b0;
 assign addressDataOut      = s_busDataOutReg;
 assign beginTransactionOut = s_beginTransactionOutReg;
-assign dataValidOut = 1'b0; //(todo) when will implement other direction
+assign dataValidOut = s_dataValidOutReg;
 assign requestTransaction = (s_dmaState == REQUEST_BUS_R) ? 1'd1 : 1'd0; // Output request sent to the arbiter
 
 
 // *** Decide next state based on current
 always @*
     case (s_dmaState)
-        IDLE            : s_dmaStateNext <= (control_reg[0] == 1'b1) ? INIT : IDLE;
+        IDLE            : s_dmaStateNext <= (control_reg == 2'b01 || control_reg == 2'b10) ? INIT : IDLE;
         
-        INIT            : s_dmaStateNext <= REQUEST_BUS_R; // todo : check if this is needed (coudl be INIT_WRITE)
+        INIT            : s_dmaStateNext <= (control_reg == 2'b01) ? REQUEST_BUS_R : REQUEST_BUS_W; // todo : check if this is needed (coudl be INIT_WRITE)
 
         // Read operation
         REQUEST_BUS_R    : s_dmaStateNext <= (transactionGranted == 1'b1) ? INIT_BURST_R : REQUEST_BUS_R;
@@ -184,6 +181,13 @@ always @*
         READ             : s_dmaStateNext <= (busErrorIn == 1'b1 && endTransactionIn == 1'b0) ? ERROR :
                                             (busErrorIn == 1'b1) ? IDLE :
                                             (s_endTransactionInReg == 1'b1) ? FINISH : READ;                   
+
+        // Write operation
+        REQUEST_BUS_W    : s_dmaStateNext <= (transactionGranted == 1'b1) ? INIT_BURST_W : REQUEST_BUS_W;
+        INIT_BURST_W     : s_dmaStateNext <= WRITE;
+        WRITE            : s_dmaStateNext <= (busErrorIn == 1'b1 && endTransactionIn == 1'b0) ? ERROR :
+                                            (busErrorIn == 1'b1) ? IDLE :
+                                            (s_endTransactionInReg == 1'b1) ? FINISH : WRITE;
 
         FINISH     : s_dmaStateNext <= (s_blockCountReg >= block_size) ? IDLE : REQUEST_BUS_R;
 
@@ -214,6 +218,7 @@ always @(posedge clock) begin
 
     s_busDataInValidReg     <= dataValidIn;
     s_busDataInReg          <= {addressDataIn[7:0], addressDataIn[15:8], addressDataIn[23:16], addressDataIn[31:24]};
+    s_busyReg               <= busy;
 
     // - todo for writing we will need it ? always 4?
     //byteEnablesOut          <= (s_dmaState == INIT_BURST_R) ? 4'hF : 4'd0;
@@ -222,15 +227,17 @@ always @(posedge clock) begin
     s_busDataOutReg         <= (s_dmaState == INIT_BURST_R) ? s_busAddressReg : 32'd0;
 
     // MASTER's outputs: start transaction
-    s_beginTransactionOutReg <= (s_dmaState == INIT_BURST_R) ? 1'd1 : 1'd0;
+    s_beginTransactionOutReg <= (s_dmaState == INIT_BURST_R || s_dmaState == INIT_BURST_W) ? 1'd1 : 1'd0;
     readNotWriteOut          <= (s_dmaState == INIT_BURST_R) ? 1'd1 : 1'd0; //   (todo for writing we will need it
-    burstSizeOut             <= (s_dmaState == INIT_BURST_R) ? burst_size : 8'd0;
+    burstSizeOut             <= (s_dmaState == INIT_BURST_R || s_dmaState == INIT_BURST_W) ? burst_size : 8'd0;
 
     // status reg
     status_reg[0]        <= (s_dmaState == IDLE) ? 1'b0 : 1'b1;   // shows if DMA-transfer is still in progress
     
     // error flag - //todo maybe it should be kept high even when we are back in idle
     status_reg[1]        <= (s_dmaState == ERROR) ? 1'b1 : 1'b0;
+
+    s_dataValidOutReg    <= (s_dmaState == WRITE) ? 1'd1 : 1'd0; // when writing data is always valid
 end
 
 assign s_busDataInValidReg_input = s_busDataInValidReg;

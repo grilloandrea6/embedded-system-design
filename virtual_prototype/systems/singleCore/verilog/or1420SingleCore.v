@@ -486,6 +486,7 @@ module or1420SingleCore ( input wire         clock12MHz,
                 .dataValidIn(s_dataValid),
                 .busErrorIn(s_busError),
                 .transactionGranted(s_dmaBusGranted),
+                .busy(s_busy),
 
                 // Output
                 .addressDataOut(s_dmaAddressData),
