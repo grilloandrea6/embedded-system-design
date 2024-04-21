@@ -72,7 +72,7 @@ int DMAtest2 () {
       printf("-");
     } else break;
   }
-  printf("DMA is free");
+  printf("DMA is free\n");
 
 
   // set control register - 0x1
