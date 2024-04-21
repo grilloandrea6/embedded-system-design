@@ -51,7 +51,7 @@ dmaMemory myDmaMemory
             (.clockA(clock),
             .clockB(~clock),
             .writeEnableA(valueA[9] && (valueA[31:10] == 0) && s_startCi),
-            .writeEnableB(s_busDataInValidReg_input),
+            .writeEnableB(s_dmaState == READ && s_busDataInValidReg_input),
             .addressA(valueA[8:0]),
             .addressB(s_memoryAddressReg_input),
             .dataInA(valueB),
@@ -149,7 +149,6 @@ localparam [3:0] IDLE            = 4'd0,
 
 
 reg [3:0]  s_dmaState = IDLE, s_dmaStateNext = IDLE;
-reg [7:0]  s_burstCountReg          = 8'd0;
 reg [9:0]  s_blockCountReg          = 10'd0;
 reg        s_startTransactionReg    = 1'b0,
            s_busDataInValidReg      = 1'b0,
@@ -206,7 +205,7 @@ always @(posedge clock) begin
     
 
     // reset or increment burst count
-    s_blockCountReg             <= (reset == 1'd1 || s_dmaState == IDLE) ? block_size : 
+    s_blockCountReg             <= (s_dmaState == INIT) ? block_size : 
                                 (s_dmaState == READ && s_busDataInValidReg == 1'd1) ? s_blockCountReg - 10'd1 : s_blockCountReg;
 
     // end transaction read from slave or reset
