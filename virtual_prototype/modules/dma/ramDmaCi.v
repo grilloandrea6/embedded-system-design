@@ -85,7 +85,9 @@ always @(posedge clock) begin
         end
         else begin
             // read1
-            s_reading <= 1'b1;
+            s_reading      <= 1'b1; 
+            control_reg[0] <= 0;
+
         end    
         result <= 32'b0;
     end 
@@ -115,7 +117,7 @@ always @(posedge clock) begin
             result <= 32'b0;
             done_int <= 1'b0;
         end
-
+        control_reg[0] <= 0;
     end
 end
 
@@ -183,7 +185,7 @@ always @*
                                             (busErrorIn == 1'b1) ? IDLE :
                                             (s_endTransactionInReg == 1'b1) ? FINISH : READ;                   
 
-        FINISH     : s_dmaStateNext <= (s_blockCountReg == block_size) ? IDLE : REQUEST_BUS_R;
+        FINISH     : s_dmaStateNext <= (s_blockCountReg >= block_size) ? IDLE : REQUEST_BUS_R;
 
         ERROR            : s_dmaStateNext <= (s_endTransactionInReg == 1'b1) ? IDLE : ERROR;
 
@@ -196,11 +198,11 @@ always @(posedge clock) begin
 
     // reset or increment memory address
     s_memoryAddressReg           <= (s_dmaState == INIT) ? memory_start_address : 
-                                (s_dmaState == READ && s_busDataInValidReg == 1'd1) ? s_busAddressReg + 32'd4 : s_memoryAddressReg;
+                                (s_dmaState == READ && s_busDataInValidReg == 1'd1) ? s_memoryAddressReg + 9'd1 : s_memoryAddressReg;
     
     // reset or increment bus address
     s_busAddressReg               <= (s_dmaState == INIT) ? bus_start_address : 
-                                  (s_dmaState == READ && s_busDataInValidReg == 1'd1) ? s_memoryAddressReg + 9'd1 : s_busAddressReg;
+                                  (s_dmaState == READ && s_busDataInValidReg == 1'd1) ? s_busAddressReg + 32'd4 : s_busAddressReg;
     
 
     // reset or increment burst count
@@ -211,7 +213,7 @@ always @(posedge clock) begin
     s_endTransactionInReg   <= endTransactionIn & ~reset;
 
     s_busDataInValidReg     <= dataValidIn;
-    s_busDataInReg          <= addressDataIn;
+    s_busDataInReg          <= {addressDataIn[7:0], addressDataIn[15:8], addressDataIn[23:16], addressDataIn[31:24]};
 
     // - todo for writing we will need it ? always 4?
     //byteEnablesOut          <= (s_dmaState == INIT_BURST_R) ? 4'hF : 4'd0;
@@ -229,10 +231,6 @@ always @(posedge clock) begin
     
     // error flag - //todo maybe it should be kept high even when we are back in idle
     status_reg[1]        <= (s_dmaState == ERROR) ? 1'b1 : 1'b0;
-    
-    // reset control register after DMA transfer is started
-    // todo control_reg[0]       <= (s_dmaState != IDLE) ? 1'b0 : control_reg;   
-
 end
 
 assign s_busDataInValidReg_input = s_busDataInValidReg;

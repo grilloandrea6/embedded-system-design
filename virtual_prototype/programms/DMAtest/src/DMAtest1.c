@@ -10,7 +10,7 @@ int DMAtest1 () {
  
   volatile uint32_t ret = 1234;
 
-  for(volatile uint32_t i = 0; i < 500; i++) {
+  for(volatile uint32_t i = 0; i < 30; i++) {
     val = i + 5;
     ctrl = ctrl_base | i;
     printf("writing index %d value %d\n", i, val);
@@ -19,7 +19,7 @@ int DMAtest1 () {
   }
 
   printf("\n\n\n");
-  for(volatile uint32_t i = 0; i < 500; i++) {
+  for(volatile int32_t i = 30; i >= 0; i--) {
     printf("reading index %d\n", i);
     asm volatile("l.nios_rrr %[out1],%[in1],%[in2], 14" : [out1] "=r"(ret) : [in1] "r"(i), [in2] "r"(0));
     printf("return %d\n", ret);

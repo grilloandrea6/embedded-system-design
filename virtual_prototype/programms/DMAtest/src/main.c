@@ -15,6 +15,6 @@ int main() {
   printf("running dma test 2\n");
   DMAtest2();
 
-  printf("running dma test 3\n");
-  DMAtest3();
+  // printf("running dma test 3\n");
+  // DMAtest3();
 }
