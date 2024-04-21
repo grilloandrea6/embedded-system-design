@@ -1,14 +1,14 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#define BUF_SIZE    5
-#define BURST_SIZE  4
+#define BUF_SIZE    13
+#define BURST_SIZE  20
 
 int DMAtest2 () {
-  volatile uint32_t buffer[BUF_SIZE];
+  volatile uint32_t buffer[BUF_SIZE+5];
   volatile uint32_t ret, ctrl;
 
-  for(volatile uint32_t i = 0; i < BUF_SIZE; i++)
+  for(volatile uint32_t i = 0; i < BUF_SIZE+5; i++)
     buffer[i] = 321 + i;
 
   // write bus address - buffer
@@ -104,11 +104,10 @@ int DMAtest2 () {
   printf("evvai!\n");
   printf("now we should check the result\n");
 
-  uint32_t indexes[] = {0,1,2,3,4,5};
-  for(uint32_t i = 0; i < 6; i++) // ToDo: sizeof(indexes)/sizeof(uint32_t)
+  for(uint32_t i = 0; i < 20; i++) // ToDo: sizeof(indexes)/sizeof(uint32_t)
   {
-    asm volatile("l.nios_rrr %[out1],%[in1],%[in2], 14" : [out1] "=r"(ret) : [in1] "r"(indexes[i]), [in2] "r"(0));
-    printf("read memory at index %d, value %d\n",indexes[i], ret);
+    asm volatile("l.nios_rrr %[out1],%[in1],%[in2], 14" : [out1] "=r"(ret) : [in1] "r"(i), [in2] "r"(0));
+    printf("read memory at index %d, value %d\n",i, ret);
   }
 
   printf("did it work? :)\n");

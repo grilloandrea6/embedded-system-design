@@ -52,7 +52,7 @@ dmaMemory myDmaMemory
             (.clockA(clock),
             .clockB(~clock),
             .writeEnableA(valueA[9] && (valueA[31:10] == 0) && s_startCi),
-            .writeEnableB(s_busDataInValidReg_input),
+            .writeEnableB(s_dmaState == READ && s_busDataInValidReg_input),
             .addressA(valueA[8:0]),
             .addressB(s_memoryAddressReg_input),
             .dataInA(valueB),
@@ -144,7 +144,6 @@ localparam [3:0] IDLE            = 4'd0,
 
 
 reg [3:0]  s_dmaState = IDLE, s_dmaStateNext = IDLE;
-reg [7:0]  s_burstCountReg          = 8'd0;
 reg [9:0]  s_blockCountReg          = 10'd0;
 reg        s_startTransactionReg    = 1'b0,
            s_busDataInValidReg      = 1'b0,
@@ -189,7 +188,7 @@ always @*
                                             (busErrorIn == 1'b1) ? IDLE :
                                             (s_endTransactionInReg == 1'b1) ? FINISH : WRITE;
 
-        FINISH     : s_dmaStateNext <= (s_blockCountReg >= block_size) ? IDLE : REQUEST_BUS_R;
+        FINISH     : s_dmaStateNext <= (s_blockCountReg == 10'd0) ? IDLE : REQUEST_BUS_R;
 
         ERROR            : s_dmaStateNext <= (s_endTransactionInReg == 1'b1) ? IDLE : ERROR;
 
@@ -210,8 +209,8 @@ always @(posedge clock) begin
     
 
     // reset or increment burst count
-    s_blockCountReg             <= (reset == 1'd1 || s_dmaState == IDLE) ? 10'd0 : 
-                                (s_dmaState == READ && s_busDataInValidReg == 1'd1) ? s_blockCountReg + 10'd1 : s_blockCountReg;
+    s_blockCountReg             <= (s_dmaState == INIT) ? block_size : 
+                                (s_dmaState == READ && s_busDataInValidReg == 1'd1) ? s_blockCountReg - 10'd1 : s_blockCountReg;
 
     // end transaction read from slave or reset
     s_endTransactionInReg   <= endTransactionIn & ~reset;
@@ -229,7 +228,8 @@ always @(posedge clock) begin
     // MASTER's outputs: start transaction
     s_beginTransactionOutReg <= (s_dmaState == INIT_BURST_R || s_dmaState == INIT_BURST_W) ? 1'd1 : 1'd0;
     readNotWriteOut          <= (s_dmaState == INIT_BURST_R) ? 1'd1 : 1'd0; //   (todo for writing we will need it
-    burstSizeOut             <= (s_dmaState == INIT_BURST_R || s_dmaState == INIT_BURST_W) ? burst_size : 8'd0;
+
+    burstSizeOut             <= (s_dmaState == INIT_BURST_R || s_dmaState == INIT_BURST_W) ? (burst_size < (s_blockCountReg - 1)) ? burst_size : (s_blockCountReg - 1) : 8'd0;
 
     // status reg
     status_reg[0]        <= (s_dmaState == IDLE) ? 1'b0 : 1'b1;   // shows if DMA-transfer is still in progress

@@ -93,10 +93,10 @@ ramDmaCi #(.customId(8'd15)) DUT
         s_valueB = 32'd66; // memory start address
         s_valueA[12:10] = 3'b010; // write it
         @(posedge clock);
-        s_valueB = 32'd88; // block size address
+        s_valueB = 32'd5; // block size address
         s_valueA[12:10] = 3'b011; // write it
         @(posedge clock);
-        s_valueB = 32'd77; // burst size
+        s_valueB = 32'd2; // burst size
         s_valueA[12:10] = 3'b100; // write it
         repeat(2) @(posedge clock);
         // All registers for DMA are set up
@@ -135,17 +135,18 @@ ramDmaCi #(.customId(8'd15)) DUT
          * * * */
         s_dataValidIn = 1'b1;
         s_addressDataIn = 32'd33; // incoming data
-        repeat(5) @(posedge clock) begin
+        repeat(2) @(posedge clock) begin
             s_addressDataIn = s_addressDataIn + 32'd10;
         end
         // check that these values were assigned to s_busDataInReg_input -> read properly
         @(posedge clock);
-
-        // simulate non valid data
         s_dataValidIn = 1'b0;
-        repeat(5) @(posedge clock) begin
-            s_addressDataIn = 32'd999;
-        end
+        
+        
+        // simulate non valid data
+        // repeat(5) @(posedge clock) begin
+        //     s_addressDataIn = 32'd999;
+        // end
 
         /* * * *
          * PHASE 4: end transaction
