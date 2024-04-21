@@ -490,6 +490,7 @@ module or1420SingleCore ( input wire         clock12MHz,
 
                 // Output
                 .addressDataOut(s_dmaAddressData),
+                .byteEnablesOut(s_dmabyteEnables),
                 .burstSizeOut(s_dmaBurstSize),
                 .requestTransaction(s_dmaRequestBus), //
                 .beginTransactionOut(s_dmaBeginTransaction),
@@ -731,7 +732,7 @@ module or1420SingleCore ( input wire         clock12MHz,
                              s_sdramEndTransaction | s_hdmiEndTransaction | s_flashEndTransaction | s_camEndTransaction | s_dmaEndTransaction; // Added s_dmaEndTransaction
  assign s_addressData      = s_cpu1AddressData | s_biosAddressData | s_uartAddressData | s_sdramAddressData | s_hdmiAddressData |
                              s_flashAddressData | s_camAddressData | s_dmaAddressData; // Added s_dmaAddressData
- assign s_byteEnables      = s_cpu1byteEnables | s_hdmiByteEnables | s_camByteEnables;
+ assign s_byteEnables      = s_cpu1byteEnables | s_hdmiByteEnables | s_camByteEnables | s_dmabyteEnables; // Added s_dmabyteEnables
  assign s_readNotWrite     = s_cpu1ReadNotWrite | s_hdmiReadNotWrite | s_dmaReadNotWrite; // Added s_dmaReadNotWrite
  assign s_dataValid        = s_cpu1DataValid | s_biosDataValid | s_uartDataValid | s_sdramDataValid | s_hdmiDataValid | 
                              s_flashDataValid | s_camDataValid | s_dmaDataValid; // Added s_dmaDataValid

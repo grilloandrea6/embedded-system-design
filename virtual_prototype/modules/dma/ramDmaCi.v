@@ -19,7 +19,7 @@ module ramDmaCi #( parameter [7:0] customId = 8'h00 )
                     
                     // Output
                     output wire [31:0]  addressDataOut,
-                    //output reg [3:0]   byteEnablesOut,            //TODO ADD IN MAIN FILE
+                    output reg [3:0]   byteEnablesOut,            
                     output reg [7:0]   burstSizeOut,
                     output reg         readNotWriteOut, 
                     output wire        beginTransactionOut,
@@ -28,6 +28,18 @@ module ramDmaCi #( parameter [7:0] customId = 8'h00 )
                                         
                     output wire         done,
                     output reg  [31:0]  result);
+
+// States
+localparam [3:0] IDLE            = 4'd0,
+                 INIT            = 4'd1,
+                 REQUEST_BUS_R   = 4'd2,
+                 INIT_BURST_R    = 4'd3,
+                 READ            = 4'd4,
+                 REQUEST_BUS_W   = 4'd5,
+                 INIT_BURST_W    = 4'd6,
+                 WRITE           = 4'd7,
+                 ERROR           = 4'd8;
+
 
 wire s_startCi = (ciN == customId) && start;
 wire [31:0] partial;
@@ -42,11 +54,15 @@ reg [9:0]  block_size               = 10'b0;
 reg [7:0]  burst_size               = 8'b0;
 reg [1:0]  status_reg               = 2'b0;
 reg [1:0]  control_reg              = 2'b0;
+reg [3:0]  s_dmaState = IDLE, s_dmaStateNext = IDLE;
 
 wire [31:0] dataoutB;
 wire [8:0] s_memoryAddressReg_input;
 wire        s_busDataInValidReg_input;
 wire [31:0] s_busDataInReg_input;
+
+
+
 
 dmaMemory myDmaMemory
             (.clockA(clock),
@@ -130,27 +146,15 @@ end
  *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-// States
-localparam [3:0] IDLE            = 4'd0,
-                 INIT            = 4'd1,
-                 REQUEST_BUS_R   = 4'd2,
-                 INIT_BURST_R    = 4'd3,
-                 READ            = 4'd4,
-                 REQUEST_BUS_W   = 4'd5,
-                 INIT_BURST_W    = 4'd6,
-                 WRITE           = 4'd7,
-                 FINISH          = 4'd8,
-                 ERROR           = 4'd9;
-
-
-reg [3:0]  s_dmaState = IDLE, s_dmaStateNext = IDLE;
 reg [9:0]  s_blockCountReg          = 10'd0;
+reg [7:0]  s_burstCountReg          = 8'd0;
 reg        s_startTransactionReg    = 1'b0,
            s_busDataInValidReg      = 1'b0,
            s_beginTransactionOutReg = 1'b0,
-           s_endTransactionInReg    = 1'b0;
-           s_busyReg                = 1'b0;
-           s_dataValidOutReg        = 1'b0;
+           s_endTransactionInReg    = 1'b0,
+           s_busyReg                = 1'b0,
+           s_dataValidOutReg        = 1'b0,
+           s_endTransactionOutReg      = 1'b0;
 reg [31:0] s_busDataOutReg          = 32'd0,
            s_busDataInReg           = 32'd0;
 
@@ -159,7 +163,7 @@ reg [8:0]  s_memoryAddressReg       = 9'd0;
 
 
 // will be needed for last part - now we just wait for slave to finish transaction - assign endTransactionOut   = s_endTransactionReg;
-assign endTransactionOut   = 1'b0;
+assign endTransactionOut   = s_endTransactionOutReg;
 assign addressDataOut      = s_busDataOutReg;
 assign beginTransactionOut = s_beginTransactionOutReg;
 assign dataValidOut = s_dataValidOutReg;
@@ -179,16 +183,15 @@ always @*
 
         READ             : s_dmaStateNext <= (busErrorIn == 1'b1 && endTransactionIn == 1'b0) ? ERROR :
                                             (busErrorIn == 1'b1) ? IDLE :
-                                            (s_endTransactionInReg == 1'b1) ? FINISH : READ;                   
+                                            (s_endTransactionInReg == 1'b1) ? (s_blockCountReg == 10'd0) ? IDLE : REQUEST_BUS_R : READ;                   
 
         // Write operation
         REQUEST_BUS_W    : s_dmaStateNext <= (transactionGranted == 1'b1) ? INIT_BURST_W : REQUEST_BUS_W;
         INIT_BURST_W     : s_dmaStateNext <= WRITE;
         WRITE            : s_dmaStateNext <= (busErrorIn == 1'b1 && endTransactionIn == 1'b0) ? ERROR :
                                             (busErrorIn == 1'b1) ? IDLE :
-                                            (s_endTransactionInReg == 1'b1) ? FINISH : WRITE;
-
-        FINISH     : s_dmaStateNext <= (s_blockCountReg == 10'd0) ? IDLE : REQUEST_BUS_R;
+                                            (s_burstCountReg == burst_size && s_blockCountReg == 0) ? IDLE : 
+                                            (s_burstCountReg == burst_size) ? REQUEST_BUS_W : WRITE;
 
         ERROR            : s_dmaStateNext <= (s_endTransactionInReg == 1'b1) ? IDLE : ERROR;
 
@@ -201,16 +204,16 @@ always @(posedge clock) begin
 
     // reset or increment memory address
     s_memoryAddressReg           <= (s_dmaState == INIT) ? memory_start_address : 
-                                (s_dmaState == READ && s_busDataInValidReg == 1'd1) ? s_memoryAddressReg + 9'd1 : s_memoryAddressReg;
+                                ((s_dmaState == READ && s_busDataInValidReg == 1'd1) || (s_dmaState == WRITE && s_busyReg == 0)) ? s_memoryAddressReg + 9'd1 : s_memoryAddressReg;
     
     // reset or increment bus address
     s_busAddressReg               <= (s_dmaState == INIT) ? bus_start_address : 
-                                  (s_dmaState == READ && s_busDataInValidReg == 1'd1) ? s_busAddressReg + 32'd4 : s_busAddressReg;
+                                  ((s_dmaState == READ && s_busDataInValidReg == 1'd1) || (s_dmaState == WRITE && s_busyReg == 0)) ? s_busAddressReg + 32'd4 : s_busAddressReg;
     
 
     // reset or increment burst count
     s_blockCountReg             <= (s_dmaState == INIT) ? block_size : 
-                                (s_dmaState == READ && s_busDataInValidReg == 1'd1) ? s_blockCountReg - 10'd1 : s_blockCountReg;
+                                ((s_dmaState == READ && s_busDataInValidReg == 1'd1) || (s_dmaState == WRITE && s_busyReg == 0)) ? s_blockCountReg - 10'd1 : s_blockCountReg;
 
     // end transaction read from slave or reset
     s_endTransactionInReg   <= endTransactionIn & ~reset;
@@ -220,10 +223,11 @@ always @(posedge clock) begin
     s_busyReg               <= busy;
 
     // - todo for writing we will need it ? always 4?
-    //byteEnablesOut          <= (s_dmaState == INIT_BURST_R) ? 4'hF : 4'd0;
+    byteEnablesOut          <= (s_dmaState == WRITE) ? 4'hF : 4'd0;
 
-    // send address when we start transaction, otherwise ero, todo for writing we will need it
-    s_busDataOutReg         <= (s_dmaState == INIT_BURST_R) ? s_busAddressReg : 32'd0;
+    // send address when we start read or write transaction, if WRITE send data
+    s_busDataOutReg         <= (s_dmaState == INIT_BURST_R || s_dmaState == INIT_BURST_W) ? s_busAddressReg : 
+                               (s_dmaState == WRITE) ? dataoutB : 32'd0;
 
     // MASTER's outputs: start transaction
     s_beginTransactionOutReg <= (s_dmaState == INIT_BURST_R || s_dmaState == INIT_BURST_W) ? 1'd1 : 1'd0;
@@ -238,6 +242,9 @@ always @(posedge clock) begin
     status_reg[1]        <= (s_dmaState == ERROR) ? 1'b1 : 1'b0;
 
     s_dataValidOutReg    <= (s_dmaState == WRITE) ? 1'd1 : 1'd0; // when writing data is always valid
+    s_burstCountReg      <= (s_dmaState == REQUEST_BUS_W) ? 8'b0 : (s_dmaState == WRITE && s_busyReg == 0) ? s_burstCountReg + 8'd1 : s_burstCountReg;
+    s_endTransactionOutReg <= (s_dmaState == WRITE && s_burstCountReg == burst_size && s_blockCountReg == 0) ? 1'd1 : 1'd0;
+    byteEnablesOut       <= (s_dmaState == INIT_BURST_R || s_dmaState == INIT_BURST_W) ? 4'hF : 4'd0;
 end
 
 assign s_busDataInValidReg_input = s_busDataInValidReg;
