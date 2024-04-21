@@ -48,11 +48,11 @@ dmaMemory myDmaMemory
             (.clockA(clock),
             .clockB(~clock),
             .writeEnableA(valueA[9] && (valueA[31:10] == 0) && s_startCi),
-            .writeEnableB(1'b0),
+            .writeEnableB(s_busDataInValidReg),
             .addressA(valueA[8:0]),
-            .addressB(9'b0),
+            .addressB(s_memoryAddressReg),
             .dataInA(valueB),
-            .dataInB(32'b0),
+            .dataInB(s_busDataInReg), //todo handle endianness shit
             .dataOutA(partial),
             .dataOutB(dataoutB)
             );
@@ -139,10 +139,11 @@ reg        s_startTransactionReg,
            s_busDataInValidReg,
            s_beginTransactionOutReg,
            s_endTransactionInReg;
-reg [31:0] s_busDataOutReg;
+reg [31:0] s_busDataOutReg,
+           s_busDataInReg;
 
-// todo reg [31:0] s_busAddressReg;
-// todo reg [8:0]  s_memoryAddressReg;
+reg [31:0] s_busAddressReg;
+reg [8:0]  s_memoryAddressReg;
 
 assign dataValidOut = 1'b0; //(todo) when will implement other direction
 assign requestTransaction = (s_dmaState == REQUEST_BUS_R) ? 1'd1 : 1'd0; // Output request sent to the arbiter
@@ -156,9 +157,10 @@ assign beginTransactionOut = s_beginTransactionOutReg;
 
 // States
 localparam [3:0] IDLE            = 3'd0,
-                 REQUEST_BUS_R   = 3'd1,
-                 INIT_BURST_R    = 3'd2,
-                 READ            = 3'd3,
+                 INIT            = 3'd1,
+                 REQUEST_BUS_R   = 3'd2,
+                 INIT_BURST_R    = 3'd3,
+                 READ            = 3'd4,
                  FINISH          = 3'd5,
                  ERROR           = 3'd6;
 
@@ -166,8 +168,10 @@ localparam [3:0] IDLE            = 3'd0,
 // *** Decide next state based on current
 always @*
     case (s_dmaState)
-        IDLE            : s_dmaStateNext <= (control_reg[0] == 1'b1) ? REQUEST_BUS_R : IDLE;
+        IDLE            : s_dmaStateNext <= (control_reg[0] == 1'b1) ? INIT : IDLE;
         
+        INIT            : s_dmaStateNext <= REQUEST_BUS_R;
+
         // Read operation
         REQUEST_BUS_R    : s_dmaStateNext <= (transactionGranted == 1'b1) ? INIT_BURST_R : REQUEST_BUS_R;
         INIT_BURST_R     : s_dmaStateNext <= READ;
@@ -187,13 +191,14 @@ always @(posedge clock) begin
     // update state
     s_dmaState               <= (reset == 1'd1) ? IDLE : s_dmaStateNext;
 
-    // todo // reset or increment memory address
-    // memory_start_address        <= (reset == 1'd1) ? 9'd0 : 
-    //                             (s_dmaState == READ && s_busDataInValidReg == 1'd1) ? memory_start_address + 9'd1 : memory_start_address;
-
-    // todo // reset or increment bus address
-    // bus_start_address           <= (reset == 1'd1) ? 32'd0 : 
-    //                             (s_dmaState == READ && s_busDataInValidReg == 1'd1) ? bus_start_address + 32'd4 : bus_start_address;
+    // reset or increment memory address
+    s_memoryAddressReg           <= (s_dmaState == INIT) ? memory_start_address : 
+                                (s_dmaState == READ && s_busDataInValidReg == 1'd1) ? s_busAddressReg + 32'd4 : s_busAddressReg;
+    
+    // reset or increment bus address
+    s_busAddressReg               <= (s_dmaState == INIT) ? bus_start_address : 
+                                  (s_dmaState == READ && s_busDataInValidReg == 1'd1) ? s_memoryAddressReg + 9'd1 : s_memoryAddressReg;
+    
 
     // reset or increment burst count
     s_blockCountReg             <= (reset == 1'd1 || s_dmaState == IDLE) ? 10'd0 : 
@@ -203,12 +208,13 @@ always @(posedge clock) begin
     s_endTransactionInReg   <= endTransactionIn & ~reset;
 
     s_busDataInValidReg     <= dataValidIn;
+    s_busDataInReg          <= addressDataIn;
 
-    // bytes enables out is always 0 or 4 when we send address todo for writing we will need it ? always 4?
+    // - todo for writing we will need it ? always 4?
     //byteEnablesOut          <= (s_dmaState == INIT_BURST_R) ? 4'hF : 4'd0;
 
     // send address when we start transaction, otherwise ero, todo for writing we will need it
-    s_busDataOutReg         <= (s_dmaState == INIT_BURST_R) ? bus_start_address : 32'd0;
+    s_busDataOutReg         <= (s_dmaState == INIT_BURST_R) ? s_busAddressReg : 32'd0;
 
     // start transaction
     s_beginTransactionOutReg <= (s_dmaState == INIT_BURST_R) ? 1'd1 : 1'd0;
