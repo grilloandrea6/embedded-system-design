@@ -48,11 +48,11 @@ dmaMemory myDmaMemory
             (.clockA(clock),
             .clockB(~clock),
             .writeEnableA(valueA[9] && (valueA[31:10] == 0) && s_startCi),
-            .writeEnableB(s_busDataInValidReg),
+            .writeEnableB(s_busDataInValidReg_input),
             .addressA(valueA[8:0]),
-            .addressB(s_memoryAddressReg),
+            .addressB(s_memoryAddressReg_input),
             .dataInA(valueB),
-            .dataInB(s_busDataInReg), //todo handle endianness shit
+            .dataInB(s_busDataInReg_input), //todo handle endianness shit
             .dataOutA(partial),
             .dataOutB(dataoutB)
             );
@@ -145,15 +145,6 @@ reg [31:0] s_busDataOutReg,
 reg [31:0] s_busAddressReg;
 reg [8:0]  s_memoryAddressReg;
 
-assign dataValidOut = 1'b0; //(todo) when will implement other direction
-assign requestTransaction = (s_dmaState == REQUEST_BUS_R) ? 1'd1 : 1'd0; // Output request sent to the arbiter
-
-// will be needed for last part - now we just wait for slave to finish transaction - assign endTransactionOut   = s_endTransactionReg;
-assign addressDataOut      = s_busDataOutReg;
-assign beginTransactionOut = s_beginTransactionOutReg;
-
-
-
 
 // States
 localparam [3:0] IDLE            = 3'd0,
@@ -164,13 +155,20 @@ localparam [3:0] IDLE            = 3'd0,
                  FINISH          = 3'd5,
                  ERROR           = 3'd6;
 
+// will be needed for last part - now we just wait for slave to finish transaction - assign endTransactionOut   = s_endTransactionReg;
+assign endTransactionOut   = 1'b0;
+assign addressDataOut      = s_busDataOutReg;
+assign beginTransactionOut = s_beginTransactionOutReg;
+assign dataValidOut = 1'b0; //(todo) when will implement other direction
+assign requestTransaction = (s_dmaState == REQUEST_BUS_R) ? 1'd1 : 1'd0; // Output request sent to the arbiter
+
 
 // *** Decide next state based on current
 always @*
     case (s_dmaState)
         IDLE            : s_dmaStateNext <= (control_reg[0] == 1'b1) ? INIT : IDLE;
         
-        INIT            : s_dmaStateNext <= REQUEST_BUS_R;
+        INIT            : s_dmaStateNext <= REQUEST_BUS_R; // todo : check if this is needed (coudl be INIT_WRITE)
 
         // Read operation
         REQUEST_BUS_R    : s_dmaStateNext <= (transactionGranted == 1'b1) ? INIT_BURST_R : REQUEST_BUS_R;
@@ -216,10 +214,10 @@ always @(posedge clock) begin
     // send address when we start transaction, otherwise ero, todo for writing we will need it
     s_busDataOutReg         <= (s_dmaState == INIT_BURST_R) ? s_busAddressReg : 32'd0;
 
-    // start transaction
+    // MASTER's outputs: start transaction
     s_beginTransactionOutReg <= (s_dmaState == INIT_BURST_R) ? 1'd1 : 1'd0;
     readNotWriteOut          <= (s_dmaState == INIT_BURST_R) ? 1'd1 : 1'd0; //   (todo for writing we will need it
-    burstSizeOut             <= (s_dmaState == INIT_BURST_R) ? burst_size : 8'd0; 
+    burstSizeOut             <= (s_dmaState == INIT_BURST_R) ? burst_size : 8'd0;
 
     // status reg
     status_reg[0]        <= (s_dmaState == IDLE) ? 1'b0 : 1'b1;   // shows if DMA-transfer is still in progress
@@ -231,5 +229,9 @@ always @(posedge clock) begin
     // todo control_reg[0]       <= (s_dmaState != IDLE) ? 1'b0 : control_reg;   
 
 end
+
+assign s_busDataInValidReg_input = s_busDataInValidReg;
+assign s_memoryAddressReg_input = s_memoryAddressReg;
+assign s_busDataInReg_input = s_busDataInReg;
 
 endmodule
