@@ -35,14 +35,17 @@ assign done = done_int;
 
 
 // Registers with info needed by DMA
-reg [31:0] bus_start_address;
-reg [8:0]  memory_start_address;
-reg [9:0]  block_size;
-reg [7:0]  burst_size;
-reg [1:0]  status_reg;
-reg [1:0]  control_reg;
+reg [31:0] bus_start_address        = 32'b0;
+reg [8:0]  memory_start_address     = 9'b0;
+reg [9:0]  block_size               = 10'b0;
+reg [7:0]  burst_size               = 8'b0;
+reg [1:0]  status_reg               = 2'b0;
+reg [1:0]  control_reg              = 2'b0;
 
 wire [31:0] dataoutB;
+wire [8:0] s_memoryAddressReg_input;
+wire        s_busDataInValidReg_input;
+wire [31:0] s_busDataInReg_input;
 
 dmaMemory myDmaMemory
             (.clockA(clock),
@@ -84,6 +87,7 @@ always @(posedge clock) begin
             // read1
             s_reading <= 1'b1;
         end    
+        result <= 32'b0;
     end 
     else begin
         // either read2 or nothing
@@ -132,28 +136,29 @@ end
  *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-reg [3:0]  s_dmaState, s_dmaStateNext;
-reg [7:0]  s_burstCountReg;
-reg [9:0]  s_blockCountReg;
-reg        s_startTransactionReg,
-           s_busDataInValidReg,
-           s_beginTransactionOutReg,
-           s_endTransactionInReg;
-reg [31:0] s_busDataOutReg,
-           s_busDataInReg;
-
-reg [31:0] s_busAddressReg;
-reg [8:0]  s_memoryAddressReg;
-
-
 // States
-localparam [3:0] IDLE            = 3'd0,
-                 INIT            = 3'd1,
-                 REQUEST_BUS_R   = 3'd2,
-                 INIT_BURST_R    = 3'd3,
-                 READ            = 3'd4,
-                 FINISH          = 3'd5,
-                 ERROR           = 3'd6;
+localparam [3:0] IDLE            = 4'd0,
+                 INIT            = 4'd1,
+                 REQUEST_BUS_R   = 4'd2,
+                 INIT_BURST_R    = 4'd3,
+                 READ            = 4'd4,
+                 FINISH          = 4'd5,
+                 ERROR           = 4'd6;
+
+
+reg [3:0]  s_dmaState = IDLE, s_dmaStateNext = IDLE;
+reg [7:0]  s_burstCountReg          = 8'd0;
+reg [9:0]  s_blockCountReg          = 10'd0;
+reg        s_startTransactionReg    = 1'b0,
+           s_busDataInValidReg      = 1'b0,
+           s_beginTransactionOutReg = 1'b0,
+           s_endTransactionInReg    = 1'b0;
+reg [31:0] s_busDataOutReg          = 32'd0,
+           s_busDataInReg           = 32'd0;
+
+reg [31:0] s_busAddressReg          = 32'd0;
+reg [8:0]  s_memoryAddressReg       = 9'd0;
+
 
 // will be needed for last part - now we just wait for slave to finish transaction - assign endTransactionOut   = s_endTransactionReg;
 assign endTransactionOut   = 1'b0;
@@ -191,11 +196,11 @@ always @(posedge clock) begin
 
     // reset or increment memory address
     s_memoryAddressReg           <= (s_dmaState == INIT) ? memory_start_address : 
-                                (s_dmaState == READ && s_busDataInValidReg == 1'd1) ? s_busAddressReg + 32'd4 : s_busAddressReg;
+                                (s_dmaState == READ && s_busDataInValidReg == 1'd1) ? s_busAddressReg + 32'd4 : s_memoryAddressReg;
     
     // reset or increment bus address
     s_busAddressReg               <= (s_dmaState == INIT) ? bus_start_address : 
-                                  (s_dmaState == READ && s_busDataInValidReg == 1'd1) ? s_memoryAddressReg + 9'd1 : s_memoryAddressReg;
+                                  (s_dmaState == READ && s_busDataInValidReg == 1'd1) ? s_memoryAddressReg + 9'd1 : s_busAddressReg;
     
 
     // reset or increment burst count

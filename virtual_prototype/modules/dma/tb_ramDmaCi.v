@@ -3,22 +3,22 @@
 module tb_ramDmaCi;
 
     // Inputs
-    reg clock;
-    reg reset;
-    reg [31:0] s_valueA;
-    reg [31:0] s_valueB;
-    reg [7:0] s_ciN;
-    reg s_start;
+    reg clock = 1'b0;
+    reg reset = 1'b0;
+    reg [31:0] s_valueA = 32'b0;
+    reg [31:0] s_valueB = 32'b0;
+    reg [7:0] s_ciN = 8'b0;
+    reg s_start = 1'b0;
     wire [31:0] data_out;
-    reg [31:0] block_output;
+    reg [31:0] block_output = 32'b0;
     reg s_transactionGranted = 1'b0;
-    reg [31:0] s_addressDataIn;
-    reg s_endTransactionIn;
-    reg s_busErrorIn;
-    reg s_dataValidIn;
+    reg [31:0] s_addressDataIn = 32'b0;
+    reg s_endTransactionIn = 1'b0;
+    reg s_busErrorIn = 1'b0;
+    reg s_dataValidIn = 1'b0;
     wire EXITci_requestTransaction;
-    wire EXITci_addressDataOut;
-    wire EXITci_burstSizeOut;
+    wire[31:0] EXITci_addressDataOut;
+    wire[7:0] EXITci_burstSizeOut;
     wire EXITci_readNotWriteOut;
     wire EXITci_beginTransactionOut;
     wire EXITci_exitTransactionOut;
@@ -40,7 +40,7 @@ module tb_ramDmaCi;
 
 
     // Instantiate the module under test
-ramDmaCi #(.customId(8'h15)) DUT
+ramDmaCi #(.customId(8'd15)) DUT
                   ( .start(s_start),
                     .clock(clock),
                     .reset(reset),
@@ -80,7 +80,7 @@ ramDmaCi #(.customId(8'h15)) DUT
          * * * */
 
         s_ciN = 8'd15;
-        s_valueA[31:10] = 0;
+        s_valueA[31:0] = 0;
         s_valueA[9] = 1'b1;     
         s_start = 1'b1;
         
@@ -108,7 +108,7 @@ ramDmaCi #(.customId(8'h15)) DUT
          * * * */
         s_busErrorIn = 1'b0;
         
-        s_valueB[1:0] = 2'b01; // start DMA
+        s_valueB[31:0] = 31'd1; // start DMA
         s_valueA[12:10] = 3'b101; // write it
         repeat(2) @(posedge clock); // this should bring DMA into REQUEST_BUS_R state
         // CHECK:
@@ -117,6 +117,8 @@ ramDmaCi #(.customId(8'h15)) DUT
 
         s_transactionGranted = 1'b1; // transaction is granted
         @(posedge clock);
+        s_transactionGranted = 1'b0; // transaction granted finished
+        
         
         // * * * * * DMA should now be in INIT_BURST_R state
         // CHECK:
@@ -137,6 +139,7 @@ ramDmaCi #(.customId(8'h15)) DUT
             s_addressDataIn = s_addressDataIn + 32'd10;
         end
         // check that these values were assigned to s_busDataInReg_input -> read properly
+        @(posedge clock);
 
         // simulate non valid data
         s_dataValidIn = 1'b0;
@@ -149,7 +152,7 @@ ramDmaCi #(.customId(8'h15)) DUT
          * * * */
         s_endTransactionIn = 1'b1;
         @(posedge clock); // DMA should now be in FINISH state
-
+        s_endTransactionIn = 1'b0;
 
         // CHECK:
         // was EXITci_exitTransactionOut always 0? (should be)
