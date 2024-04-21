@@ -10,20 +10,18 @@ module ramDmaCi #( parameter [7:0] customId = 8'h00 )
                     // Arbiter
                     output wire         requestTransaction,
                     input wire          transactionGranted,
-//begintransaction in?? readnotwritein??
                     // Input
                     input wire [31:0]   addressDataIn,
                     input wire          endTransactionIn,
                                         dataValidIn,
-                                        busyIn,                 //TODO ADD IN MAIN FILE
                                         busErrorIn,
                     
                     // Output
                     output wire [31:0]  addressDataOut,
-                    output reg [3:0]   byteEnablesOut,            //TODO ADD IN MAIN FILE
-                    output reg [7:0]   burstSizeOut, //todo
+                    //output reg [3:0]   byteEnablesOut,            //TODO ADD IN MAIN FILE
+                    output reg [7:0]   burstSizeOut,
                     output reg         readNotWriteOut, 
-                    output wire        beginTransactionOut, // DONE
+                    output wire        beginTransactionOut,
                                        endTransactionOut,
                                        dataValidOut,
                                         
@@ -137,13 +135,22 @@ end
 reg [3:0]  s_dmaState, s_dmaStateNext;
 reg [7:0]  s_burstCountReg;
 reg [9:0]  s_blockCountReg;
-reg        s_startTransactionReg;
-reg        s_dataValidOutReg;
-reg        s_busDataInValidReg;
- 
-assign beginTransactionOut = s_startTransactionReg;
-// *** Update outout signals based on current state
-assign requestTransaction = (s_dmaState == REQUEST_BUS_R || s_dmaState == REQUEST_BUS_W) ? 1'd1 : 1'd0; // Output request sent to the arbiter
+reg        s_startTransactionReg,
+           s_busDataInValidReg,
+           s_beginTransactionOutReg,
+           s_endTransactionInReg;
+reg [31:0] s_busDataOutReg;
+
+// todo reg [31:0] s_busAddressReg;
+// todo reg [8:0]  s_memoryAddressReg;
+
+assign dataValidOut = 1'b0; //(todo) when will implement other direction
+assign requestTransaction = (s_dmaState == REQUEST_BUS_R) ? 1'd1 : 1'd0; // Output request sent to the arbiter
+
+// will be needed for last part - now we just wait for slave to finish transaction - assign endTransactionOut   = s_endTransactionReg;
+assign addressDataOut      = s_busDataOutReg;
+assign beginTransactionOut = s_beginTransactionOutReg;
+
 
 
 
@@ -152,8 +159,7 @@ localparam [3:0] IDLE            = 3'd0,
                  REQUEST_BUS_R   = 3'd1,
                  INIT_BURST_R    = 3'd2,
                  READ            = 3'd3,
-                 FINISH_BURST    = 3'd4,
-                 READ_DONE       = 3'd5,
+                 FINISH          = 3'd5,
                  ERROR           = 3'd6;
 
 
@@ -168,11 +174,9 @@ always @*
 
         READ             : s_dmaStateNext <= (busErrorIn == 1'b1 && endTransactionIn == 1'b0) ? ERROR :
                                             (busErrorIn == 1'b1) ? IDLE :
-                                            (s_endTransactionInReg == 1'b1) ? FINISH_BURST : READ;                        // ToDo define reg and assign to endTransactionIn & ~reset;
+                                            (s_endTransactionInReg == 1'b1) ? FINISH : READ;                   
 
-        FINISH_BURST     : s_dmaStateNext <= (s_blockCountReg == block_size) ? FINISH : REQUEST_BUS_R;
-        
-        READ_DONE        : s_dmaStateNext <= IDLE;
+        FINISH     : s_dmaStateNext <= (s_blockCountReg == block_size) ? IDLE : REQUEST_BUS_R;
 
         ERROR            : s_dmaStateNext <= (s_endTransactionInReg == 1'b1) ? IDLE : ERROR;
 
@@ -180,50 +184,46 @@ always @*
     endcase
 
 always @(posedge clock) begin
+    // update state
     s_dmaState               <= (reset == 1'd1) ? IDLE : s_dmaStateNext;
-    s_startTransactionReg   <= (s_dmaState == INIT_BURST_R) ? 1'b1 : 1'b0;
+
+    // todo // reset or increment memory address
+    // memory_start_address        <= (reset == 1'd1) ? 9'd0 : 
+    //                             (s_dmaState == READ && s_busDataInValidReg == 1'd1) ? memory_start_address + 9'd1 : memory_start_address;
+
+    // todo // reset or increment bus address
+    // bus_start_address           <= (reset == 1'd1) ? 32'd0 : 
+    //                             (s_dmaState == READ && s_busDataInValidReg == 1'd1) ? bus_start_address + 32'd4 : bus_start_address;
+
+    // reset or increment burst count
+    s_blockCountReg             <= (reset == 1'd1 || s_dmaState == IDLE) ? 10'd0 : 
+                                (s_dmaState == READ && s_busDataInValidReg == 1'd1) ? s_blockCountReg + 10'd1 : s_blockCountReg;
+
+    // end transaction read from slave or reset
+    s_endTransactionInReg   <= endTransactionIn & ~reset;
+
     s_busDataInValidReg     <= dataValidIn;
-    byteEnablesOut          <= (s_dmaState == INIT) ? 4'hF : 4'd0;
 
-    s_dataValidOutReg        <= 1'b1; // always 1, we're not able to detect errors
-    s_blockCountReg      <= (reset == 1'b1) ? 10'd0 : (s_dmaState == FINISH || s_dmaState == FINISH) ? 10'd0 : s_blockCountReg; // Reset block counter every time we request bus
+    // bytes enables out is always 0 or 4 when we send address todo for writing we will need it ? always 4?
+    //byteEnablesOut          <= (s_dmaState == INIT_BURST_R) ? 4'hF : 4'd0;
 
-    memory_start_address <= (reset == 1'b1) ? 9'b0 : (s_busDataInValidReg == 1'b1 && (s_dmaState == READ || s_dmaState == WRITE)) ? memory_start_address + 1'b1 : memory_start_address; // Increment memory address
-    s_blockCountReg      <= (reset == 1'b1) ? 10'd0 : (s_dmaState == READ || s_dmaState == WRITE) ? s_blockCountReg + 1'b1 : s_blockCountReg; // Increment block counter
-    //s_addressDataOut     <= (reset == 1'b1) ? 32'd0 : (s_dmaState == REQUEST_BUS_R || s_dmaState == REQUEST_BUS_W) ? bus_start_address : s_addressDataOut; // Set address
-    status_reg[0]        <= (s_dmaState == IDLE) ? 1'b0 : 1'b1   // shows if DMA-transfer is still in progress
-    status_reg[1]        <= (s_dmaState == ERROR) ? 1'b1 : 1'b0  // error flag
-    control_reg[0]       <= (s_dmaState != IDLE) ? 1'b0 : 1'b1   // reset control register
+    // send address when we start transaction, otherwise ero, todo for writing we will need it
+    s_busDataOutReg         <= (s_dmaState == INIT_BURST_R) ? bus_start_address : 32'd0;
 
-end
+    // start transaction
+    s_beginTransactionOutReg <= (s_dmaState == INIT_BURST_R) ? 1'd1 : 1'd0;
+    readNotWriteOut          <= (s_dmaState == INIT_BURST_R) ? 1'd1 : 1'd0; //   (todo for writing we will need it
+    burstSizeOut             <= (s_dmaState == INIT_BURST_R) ? burst_size : 8'd0; 
 
+    // status reg
+    status_reg[0]        <= (s_dmaState == IDLE) ? 1'b0 : 1'b1;   // shows if DMA-transfer is still in progress
+    
+    // error flag - //todo maybe it should be kept high even when we are back in idle
+    status_reg[1]        <= (s_dmaState == ERROR) ? 1'b1 : 1'b0;
+    
+    // reset control register after DMA transfer is started
+    // todo control_reg[0]       <= (s_dmaState != IDLE) ? 1'b0 : control_reg;   
 
-// Update signals (address, burst size, block size)
-always @* begin
-    case (s_dmaState)
-        IDLE            : begin
-                            s_blockCountReg <= 10'd0;
-                            s_addressDataOut <= 32'd0;
-                            //s_dataValidOut <= 1'b0; ??
-                            s_startTransactionReg <= 1'b0;
-                        end
-        REQUEST_BUS_R   : begin
-                            s_addressDataOut <= bus_start_address;
-                        end
-        INIT_BURST_R    : begin
-                            s_addressDataOut <= memory_start_address;
-                        end
-        READ            : begin
-                            s_addressDataOut <= s_addressDataOut + 32'd4;
-                        end
-
-        ERROR           : begin
-                            s_addressDataOut <= 32'd0;
-                        end
-        default         : begin
-                            s_addressDataOut <= 32'd0;
-                        end
-    endcase
 end
 
 endmodule

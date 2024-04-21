@@ -482,13 +482,10 @@ module or1420SingleCore ( input wire         clock12MHz,
                 // Define bus interface
                 // Input
                 .addressDataIn(s_addressData),
-                .burstSizeIn(s_burstSize),
-                .beginTransactionIn(s_beginTransaction),
                 .endTransactionIn(s_endTransaction),
                 .dataValidIn(s_dataValid),
                 .busErrorIn(s_busError),
                 .transactionGranted(s_dmaBusGranted),
-                .readNotWriteIn(s_readNotWrite),
 
                 // Output
                 .addressDataOut(s_dmaAddressData),
