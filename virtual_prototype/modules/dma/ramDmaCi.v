@@ -31,14 +31,15 @@ module ramDmaCi #( parameter [7:0] customId = 8'h00 )
 
 // States
 localparam [3:0] IDLE            = 4'd0,
-                 INIT            = 4'd1,
-                 REQUEST_BUS_R   = 4'd2,
-                 INIT_BURST_R    = 4'd3,
-                 READ            = 4'd4,
-                 REQUEST_BUS_W   = 4'd5,
-                 INIT_BURST_W    = 4'd6,
-                 WRITE           = 4'd7,
-                 ERROR           = 4'd8;
+                 INIT_R            = 4'd1,
+                 INIT_W            = 4'd2,
+                 REQUEST_BUS_R   = 4'd3,
+                 INIT_BURST_R    = 4'd4,
+                 READ            = 4'd5,
+                 REQUEST_BUS_W   = 4'd6,
+                 INIT_BURST_W    = 4'd7,
+                 WRITE           = 4'd8,
+                 ERROR           = 4'd9;
 
 
 wire s_startCi = (ciN == customId) && start;
@@ -103,7 +104,7 @@ always @(posedge clock) begin
         else begin
             // read1
             s_reading      <= 1'b1; 
-            control_reg[0] <= 0;
+            control_reg <= 0;
 
         end    
         result <= 32'b0;
@@ -134,7 +135,7 @@ always @(posedge clock) begin
             result <= 32'b0;
             done_int <= 1'b0;
         end
-        control_reg[0] <= 0;
+        control_reg <= 0;
     end
 end
 
@@ -173,10 +174,12 @@ assign requestTransaction = (s_dmaState == REQUEST_BUS_R || s_dmaState == REQUES
 // *** Decide next state based on current
 always @*
     case (s_dmaState)
-        IDLE            : s_dmaStateNext <= (control_reg == 2'b01 || control_reg == 2'b10) ? INIT : IDLE;
+        IDLE            : s_dmaStateNext <= (control_reg == 2'b01) ? INIT_R : 
+                          (control_reg == 2'b10) ? INIT_W : IDLE;
         
-        INIT            : s_dmaStateNext <= (control_reg == 2'b01) ? REQUEST_BUS_R : REQUEST_BUS_W; 
-
+        INIT_R            : s_dmaStateNext <= REQUEST_BUS_R; 
+        INIT_W            : s_dmaStateNext <= REQUEST_BUS_W; 
+        
         // Read operation
         REQUEST_BUS_R    : s_dmaStateNext <= (transactionGranted == 1'b1) ? INIT_BURST_R : REQUEST_BUS_R;
         INIT_BURST_R     : s_dmaStateNext <= READ;
@@ -203,16 +206,16 @@ always @(posedge clock) begin
     s_dmaState               <= (reset == 1'd1) ? IDLE : s_dmaStateNext;
 
     // reset or increment memory address
-    s_memoryAddressReg           <= (s_dmaState == INIT) ? memory_start_address : 
+    s_memoryAddressReg           <= ((s_dmaState == INIT_R) || (s_dmaState == INIT_W)) ? memory_start_address : 
                                 ((s_dmaState == READ && s_busDataInValidReg == 1'd1) || (s_dmaState == WRITE && s_busyReg == 0)) ? s_memoryAddressReg + 9'd1 : s_memoryAddressReg;
     
     // reset or increment bus address
-    s_busAddressReg               <= (s_dmaState == INIT) ? bus_start_address : 
+    s_busAddressReg               <= ((s_dmaState == INIT_R) || (s_dmaState == INIT_W)) ? bus_start_address : 
                                   ((s_dmaState == READ && s_busDataInValidReg == 1'd1) || (s_dmaState == WRITE && s_busyReg == 0)) ? s_busAddressReg + 32'd4 : s_busAddressReg;
     
 
     // reset or increment burst count
-    s_blockCountReg             <= (s_dmaState == INIT) ? block_size : 
+    s_blockCountReg             <= ((s_dmaState == INIT_R) || (s_dmaState == INIT_W)) ? block_size : 
                                 ((s_dmaState == READ && s_busDataInValidReg == 1'd1) || (s_dmaState == WRITE && s_busyReg == 0)) ? s_blockCountReg - 10'd1 : s_blockCountReg;
 
     // end transaction read from slave or reset
