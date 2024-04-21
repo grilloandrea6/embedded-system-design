@@ -72,7 +72,7 @@ dmaMemory myDmaMemory
             .addressA(valueA[8:0]),
             .addressB(s_memoryAddressReg_input),
             .dataInA(valueB),
-            .dataInB(s_busDataInReg_input), //todo handle endianness shit
+            .dataInB(s_busDataInReg_input),
             .dataOutA(partial),
             .dataOutB(dataoutB)
             );
@@ -175,7 +175,7 @@ always @*
     case (s_dmaState)
         IDLE            : s_dmaStateNext <= (control_reg == 2'b01 || control_reg == 2'b10) ? INIT : IDLE;
         
-        INIT            : s_dmaStateNext <= (control_reg == 2'b01) ? REQUEST_BUS_R : REQUEST_BUS_W; // todo : check if this is needed (coudl be INIT_WRITE)
+        INIT            : s_dmaStateNext <= (control_reg == 2'b01) ? REQUEST_BUS_R : REQUEST_BUS_W; 
 
         // Read operation
         REQUEST_BUS_R    : s_dmaStateNext <= (transactionGranted == 1'b1) ? INIT_BURST_R : REQUEST_BUS_R;
@@ -228,7 +228,7 @@ always @(posedge clock) begin
 
     // MASTER's outputs: start transaction
     s_beginTransactionOutReg <= (s_dmaState == INIT_BURST_R || s_dmaState == INIT_BURST_W) ? 1'd1 : 1'd0;
-    readNotWriteOut          <= (s_dmaState == INIT_BURST_R) ? 1'd1 : 1'd0; //   (todo for writing we will need it
+    readNotWriteOut          <= (s_dmaState == INIT_BURST_R) ? 1'd1 : 1'd0; 
 
     burstSizeOut             <= (s_dmaState == INIT_BURST_R || s_dmaState == INIT_BURST_W) ? (burst_size < (s_blockCountReg - 1)) ? burst_size : (s_blockCountReg - 1) : 8'd0;
 
