@@ -18,6 +18,7 @@ module tb_ramDmaCi;
     reg s_dataValidIn = 1'b0;
     wire EXITci_requestTransaction;
     wire[31:0] EXITci_addressDataOut;
+    wire [3:0] EXITci_byteEnablesOut;
     wire[7:0] EXITci_burstSizeOut;
     wire EXITci_readNotWriteOut;
     wire EXITci_beginTransactionOut;
@@ -47,6 +48,7 @@ ramDmaCi #(.customId(8'd15)) DUT
                     .valueA(s_valueA),
                     .valueB(s_valueB),
                     .ciN(s_ciN),
+                    .busyIn(1'b0),
 
                     // Define bus interface
                     // Arbiter
@@ -60,7 +62,7 @@ ramDmaCi #(.customId(8'd15)) DUT
                     
                     // Output
                     .addressDataOut(EXITci_addressDataOut),
-                    //output reg [3:0]   byteEnablesOut,            //TODO ADD IN MAIN FILE
+                    .byteEnablesOut(EXITci_byteEnablesOut),            //TODO ADD IN MAIN FILE
                     .burstSizeOut(EXITci_burstSizeOut),
                     .readNotWriteOut(EXITci_readNotWriteOut), 
                     .beginTransactionOut(EXITci_beginTransactionOut),
@@ -95,7 +97,7 @@ ramDmaCi #(.customId(8'd15)) DUT
         @(posedge clock);
         
         
-        s_valueB = 32'd10; // block size address
+        s_valueB = 32'd7; // block size 
         s_valueA[12:10] = 3'b011; // write it
         
         @(posedge clock);
@@ -126,6 +128,16 @@ ramDmaCi #(.customId(8'd15)) DUT
 
         repeat(10) @(posedge clock); // simulate some delay before transaction is granted
 
+        s_transactionGranted = 1'b1; // transaction is granted
+        @(posedge clock);
+        s_transactionGranted = 1'b0; // transaction granted finished
+
+        repeat(10) @(posedge clock); // simulate some delay before transaction is granted
+        s_transactionGranted = 1'b1; // transaction is granted
+        @(posedge clock);
+        s_transactionGranted = 1'b0; // transaction granted finished
+
+        repeat(10) @(posedge clock); // simulate some delay before transaction is granted
         s_transactionGranted = 1'b1; // transaction is granted
         @(posedge clock);
         s_transactionGranted = 1'b0; // transaction granted finished
