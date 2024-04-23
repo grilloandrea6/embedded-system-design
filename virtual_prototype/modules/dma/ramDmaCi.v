@@ -196,7 +196,7 @@ always @*
         INIT_BURST_W     : s_dmaStateNext <= WRITE;
         WRITE            : s_dmaStateNext <= (busErrorIn == 1'b1 && endTransactionIn == 1'b0) ? ERROR :
                                             (busErrorIn == 1'b1) ? IDLE :
-                                            (s_burstCountReg == 0) ? FINISH_WRITE : WRITE;
+                                            (s_burstCountReg == 8'd1) ? FINISH_WRITE : WRITE;
 
         FINISH_WRITE     : s_dmaStateNext <= (s_blockCountReg == 0) ? IDLE : FINISH_WRITE_2;
 
@@ -213,16 +213,16 @@ always @(posedge clock) begin
 
     // reset or increment memory address
     s_memoryAddressReg           <= ((s_dmaState == INIT_R) || (s_dmaState == INIT_W)) ? memory_start_address : 
-                                ((s_dmaState == READ && s_busDataInValidReg == 1'd1) || (s_dmaState == WRITE && s_busyReg == 0)) ? s_memoryAddressReg + 9'd1 : s_memoryAddressReg;
+                                ((s_dmaState == READ && s_busDataInValidReg == 1'd1) || (s_dmaState == WRITE && busyIn == 0)) ? s_memoryAddressReg + 9'd1 : s_memoryAddressReg;
     
     // reset or increment bus address
     s_busAddressReg               <= ((s_dmaState == INIT_R) || (s_dmaState == INIT_W)) ? bus_start_address : 
-                                  ((s_dmaState == READ && s_busDataInValidReg == 1'd1) || (s_dmaState == WRITE && s_busyReg == 0)) ? s_busAddressReg + 32'd4 : s_busAddressReg;
+                                  ((s_dmaState == READ && s_busDataInValidReg == 1'd1) || (s_dmaState == WRITE && busyIn == 0)) ? s_busAddressReg + 32'd4 : s_busAddressReg;
     
 
     // reset or increment burst count
     s_blockCountReg             <= ((s_dmaState == INIT_R) || (s_dmaState == INIT_W)) ? block_size : 
-                                ((s_dmaState == READ && s_busDataInValidReg == 1'd1) || (s_dmaState == WRITE && s_busyReg == 0)) ? s_blockCountReg - 10'd1 : s_blockCountReg;
+                                ((s_dmaState == READ && s_busDataInValidReg == 1'd1) || (s_dmaState == WRITE && busyIn == 0)) ? s_blockCountReg - 10'd1 : s_blockCountReg;
 
     // end transaction read from slave or reset
     s_endTransactionInReg   <= endTransactionIn & ~reset;
@@ -248,7 +248,7 @@ always @(posedge clock) begin
     status_reg[1]        <= (s_dmaState == ERROR) ? 1'b1 : 1'b0;
 
     s_dataValidOutReg    <= (s_dmaState == WRITE) ? 1'd1 : 1'd0; // when writing data is always valid
-    s_burstCountReg      <= (s_dmaState == REQUEST_BUS_W) ? (burst_size < (s_blockCountReg - 1)) ? burst_size : (s_blockCountReg - 1) : (s_dmaState == WRITE && s_busyReg == 0) ? s_burstCountReg - 8'd1 : s_burstCountReg;
+    s_burstCountReg      <= (s_dmaState == REQUEST_BUS_W) ? (burst_size < (s_blockCountReg - 1)) ? burst_size : (s_blockCountReg - 1) : (s_dmaState == WRITE && busyIn == 0) ? s_burstCountReg - 8'd1 : s_burstCountReg;
 
     //s_burstCountReg <= (s_dmaState == WRITE) ? 
     //                   (s_busyReg): s_burstCountReg + 8'd1 : s_burstCountReg : 8'b0;

@@ -1,15 +1,15 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#define BUF_SIZE_W    400
-#define BURST_SIZE_W  1
+#define BUF_SIZE_W    7
+#define BURST_SIZE_W  2
 
 int DMAtest3 () {
-  volatile uint32_t buffer[BUF_SIZE_W];
+  volatile uint32_t buffer[BUF_SIZE_W+50];
   volatile uint32_t ret, ctrl;
 
-  for(volatile uint32_t i = 0; i < BUF_SIZE_W; i++)
-    buffer[i] = 0;
+  for(volatile uint32_t i = 0; i < BUF_SIZE_W+50; i++)
+    buffer[i] = 100;
 
  
   // write bus address - buffer

@@ -35,10 +35,11 @@ module tb_ramDmaCi;
       forever #5 clock = ~clock;
     end
 
-    //initial begin
-    //    $dumpfile("OUTPUT.vcd");
-    //    $dumpvars(1,DUT);
-    //end
+    initial begin
+       $dumpfile("OUTPUT.vcd");
+       $dumpvars(1,DUT);
+       $dumpvars(1,tb_ramDmaCi);
+    end
 
 
     // Instantiate the module under test
@@ -92,22 +93,22 @@ ramDmaCi #(.customId(8'd15)) DUT
 
         s_valueB = 32'd55; // bus start address
         s_valueA[12:10] = 3'b001; // write it
-        @(posedge clock);
+        @(negedge clock);
         s_valueB = 32'd66; // memory start address
         s_valueA[12:10] = 3'b010; // write it
-        @(posedge clock);
+        @(negedge clock);
         
         
         s_valueB = 32'd7; // block size 
         s_valueA[12:10] = 3'b011; // write it
         
-        @(posedge clock);
+        @(negedge clock);
         
         s_valueB = 32'd2; // burst size
         s_valueA[12:10] = 3'b100; // write it
         
         
-        repeat(2) @(posedge clock);
+        repeat(2) @(negedge clock);
         // All registers for DMA are set up
 
         /* * * *
@@ -117,38 +118,38 @@ ramDmaCi #(.customId(8'd15)) DUT
         
         s_valueB[31:0] = 31'd2; // start DMA WRITE
         s_valueA[12:10] = 3'b101; // write it
-        @(posedge clock);
+        @(negedge clock);
         s_valueA[12:10] = 0; // write it
 
-        repeat(2) @(posedge clock); // this should bring DMA into REQUEST_BUS_W state
+        repeat(2) @(negedge clock); // this should bring DMA into REQUEST_BUS_W state
         // CHECK:
         // EXITci_requestTransaction: should be 1 , 0 all the other times
-        repeat(3) @(posedge clock); // simulate some delay before transaction is granted
+        repeat(3) @(negedge clock); // simulate some delay before transaction is granted
 
         s_transactionGranted = 1'b1; // transaction is granted
-        @(posedge clock);
+        @(negedge clock);
         s_transactionGranted = 1'b0; // transaction granted finished
 
-        repeat(2) @(posedge clock); // simulate some delay before transaction is granted
+        repeat(2) @(negedge clock); // simulate some delay before transaction is granted
         s_busyIn = 1'b1;
-@(posedge clock);
+        @(negedge clock);
         s_busyIn = 0;
 
         s_transactionGranted = 1'b1; // transaction is granted
-        @(posedge clock);
+        @(negedge clock);
         s_transactionGranted = 1'b0; // transaction granted finished
 
-        repeat(10) @(posedge clock); // simulate some delay before transaction is granted
+        repeat(10) @(negedge clock); // simulate some delay before transaction is granted
         s_transactionGranted = 1'b1; // transaction is granted
-        @(posedge clock);
+        @(negedge clock);
         s_transactionGranted = 1'b0; // transaction granted finished
 
-        repeat(10) @(posedge clock); // simulate some delay before transaction is granted
+        repeat(10) @(negedge clock); // simulate some delay before transaction is granted
         s_transactionGranted = 1'b1; // transaction is granted
-        @(posedge clock);
+        @(negedge clock);
         s_transactionGranted = 1'b0; // transaction granted finished
 
-        repeat(10) @(posedge clock); // simulate some delay before transaction is granted
+        repeat(10) @(negedge clock); // simulate some delay before transaction is granted
 
     end
 
