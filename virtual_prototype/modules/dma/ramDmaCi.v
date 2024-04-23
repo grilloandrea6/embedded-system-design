@@ -100,13 +100,15 @@ always @(posedge clock) begin
                     burst_size <= valueB[7:0];
                 3'b101  : // Write control register
                     control_reg <= valueB[1:0];
+                default : 
+                    control_reg <= 0;
             endcase
             done_int <= 1'b1;
         end
         else begin
             // read1
             s_reading      <= 1'b1; 
-            control_reg <= 0;
+            control_reg <= 2'b0;
 
         end    
         result <= 32'b0;
@@ -137,7 +139,7 @@ always @(posedge clock) begin
             result <= 32'b0;
             done_int <= 1'b0;
         end
-        control_reg <= 0;
+        control_reg <= 2'b0;
     end
 end
 
@@ -194,7 +196,7 @@ always @*
         INIT_BURST_W     : s_dmaStateNext <= WRITE;
         WRITE            : s_dmaStateNext <= (busErrorIn == 1'b1 && endTransactionIn == 1'b0) ? ERROR :
                                             (busErrorIn == 1'b1) ? IDLE :
-                                            (s_burstCountReg == burst_size) ? FINISH_WRITE : WRITE;
+                                            (s_burstCountReg == 0) ? FINISH_WRITE : WRITE;
 
         FINISH_WRITE     : s_dmaStateNext <= (s_blockCountReg == 0) ? IDLE : FINISH_WRITE_2;
 
@@ -246,7 +248,7 @@ always @(posedge clock) begin
     status_reg[1]        <= (s_dmaState == ERROR) ? 1'b1 : 1'b0;
 
     s_dataValidOutReg    <= (s_dmaState == WRITE) ? 1'd1 : 1'd0; // when writing data is always valid
-    s_burstCountReg      <= (s_dmaState == REQUEST_BUS_W) ? 8'b0 : (s_dmaState == WRITE && s_busyReg == 0) ? s_burstCountReg + 8'd1 : s_burstCountReg;
+    s_burstCountReg      <= (s_dmaState == REQUEST_BUS_W) ? (burst_size < (s_blockCountReg - 1)) ? burst_size : (s_blockCountReg - 1) : (s_dmaState == WRITE && s_busyReg == 0) ? s_burstCountReg - 8'd1 : s_burstCountReg;
 
     //s_burstCountReg <= (s_dmaState == WRITE) ? 
     //                   (s_busyReg): s_burstCountReg + 8'd1 : s_burstCountReg : 8'b0;

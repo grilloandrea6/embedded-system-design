@@ -16,6 +16,7 @@ module tb_ramDmaCi;
     reg s_endTransactionIn = 1'b0;
     reg s_busErrorIn = 1'b0;
     reg s_dataValidIn = 1'b0;
+    reg s_busyIn = 1'b0;
     wire EXITci_requestTransaction;
     wire[31:0] EXITci_addressDataOut;
     wire [3:0] EXITci_byteEnablesOut;
@@ -48,7 +49,7 @@ ramDmaCi #(.customId(8'd15)) DUT
                     .valueA(s_valueA),
                     .valueB(s_valueB),
                     .ciN(s_ciN),
-                    .busyIn(1'b0),
+                    .busyIn(s_busyIn),
 
                     // Define bus interface
                     // Arbiter
@@ -116,6 +117,8 @@ ramDmaCi #(.customId(8'd15)) DUT
         
         s_valueB[31:0] = 31'd2; // start DMA WRITE
         s_valueA[12:10] = 3'b101; // write it
+        @(posedge clock);
+        s_valueA[12:10] = 0; // write it
 
         repeat(2) @(posedge clock); // this should bring DMA into REQUEST_BUS_W state
         // CHECK:
@@ -126,7 +129,10 @@ ramDmaCi #(.customId(8'd15)) DUT
         @(posedge clock);
         s_transactionGranted = 1'b0; // transaction granted finished
 
-        repeat(10) @(posedge clock); // simulate some delay before transaction is granted
+        repeat(2) @(posedge clock); // simulate some delay before transaction is granted
+        s_busyIn = 1'b1;
+@(posedge clock);
+        s_busyIn = 0;
 
         s_transactionGranted = 1'b1; // transaction is granted
         @(posedge clock);
