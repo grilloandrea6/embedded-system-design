@@ -51,13 +51,13 @@ assign done = done_int;
 
 
 // Registers with info needed by DMA
-reg [31:0] bus_start_address        = 32'b0;
-reg [8:0]  memory_start_address     = 9'b0;
-reg [9:0]  block_size               = 10'b0;
-reg [7:0]  burst_size               = 8'b0;
-reg [1:0]  status_reg               = 2'b0;
-reg [1:0]  control_reg              = 2'b0;
-reg [3:0]  s_dmaState = IDLE, s_dmaStateNext = IDLE;
+(* preserve_for_debug *) reg [31:0] bus_start_address        = 32'b0;
+(* preserve_for_debug *) reg [8:0]  memory_start_address     = 9'b0;
+(* preserve_for_debug *) reg [9:0]  block_size               = 10'b0;
+(* preserve_for_debug *) reg [7:0]  burst_size               = 8'b0;
+(* preserve_for_debug *) reg [1:0]  status_reg               = 2'b0;
+(* preserve_for_debug *) reg [1:0]  control_reg              = 2'b0;
+(* preserve_for_debug *) reg [3:0]  s_dmaState = IDLE, s_dmaStateNext = IDLE;
 
 wire [31:0] dataoutB;
 wire [8:0] s_memoryAddressReg_input;
@@ -151,20 +151,20 @@ end
  *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-reg [9:0]  s_blockCountReg          = 10'd0;
-reg [7:0]  s_burstCountReg          = 8'd0;
-reg        s_startTransactionReg    = 1'b0,
+(* preserve_for_debug *) reg [9:0]  s_blockCountReg          = 10'd0;
+(* preserve_for_debug *) reg [7:0]  s_burstCountReg          = 8'd0;
+(* preserve_for_debug *) reg        s_startTransactionReg    = 1'b0,
            s_busDataInValidReg      = 1'b0,
            s_beginTransactionOutReg = 1'b0,
            s_endTransactionInReg    = 1'b0,
            s_busyReg                = 1'b0,
            s_dataValidOutReg        = 1'b0,
            s_endTransactionOutReg      = 1'b0;
-reg [31:0] s_busDataOutReg          = 32'd0,
+(* preserve_for_debug *) reg [31:0] s_busDataOutReg          = 32'd0,
            s_busDataInReg           = 32'd0;
 
-reg [31:0] s_busAddressReg          = 32'd0;
-reg [8:0]  s_memoryAddressReg       = 9'd0;
+(* preserve_for_debug *) reg [31:0] s_busAddressReg          = 32'd0;
+(* preserve_for_debug *) reg [8:0]  s_memoryAddressReg       = 9'd0;
 
 
 assign endTransactionOut   = s_endTransactionOutReg;
@@ -196,7 +196,7 @@ always @*
         INIT_BURST_W     : s_dmaStateNext <= WRITE;
         WRITE            : s_dmaStateNext <= (busErrorIn == 1'b1 && endTransactionIn == 1'b0) ? ERROR :
                                             (busErrorIn == 1'b1) ? IDLE :
-                                            (s_burstCountReg == 8'd1) ? FINISH_WRITE : WRITE;
+                                            (s_burstCountReg == 8'b11111111) ? FINISH_WRITE : WRITE;
 
         FINISH_WRITE     : s_dmaStateNext <= (s_blockCountReg == 0) ? IDLE : FINISH_WRITE_2;
 
