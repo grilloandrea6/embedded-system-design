@@ -268,20 +268,25 @@ ramDmaCi #(.customId(8'd15)) DUT
         
         s_valueB = 32'd2; // burst size
         s_valueA[12:10] = 3'b100; // write it
+                s_start = 1'b0;
+
         
-        
-        repeat(2) @(negedge clock);
+        repeat(4) @(negedge clock);
         // All registers for DMA are set up
 
         /* * * *
          * PHASE 2: transition from idle to read state
          * * * */
         s_busErrorIn = 1'b0;
-        
+                s_start = 1'b1;
+
         s_valueB[31:0] = 31'd2; // start DMA WRITE
         s_valueA[12:10] = 3'b101; // write it
         @(negedge clock);
-        s_valueA[12:10] = 0; // write it
+                s_start = 1'b0;
+        s_valueA[12:10] = 0;
+@(negedge clock);
+                s_start = 1'b0;
 
         repeat(2) @(negedge clock); // this should bring DMA into REQUEST_BUS_W state
         // CHECK:

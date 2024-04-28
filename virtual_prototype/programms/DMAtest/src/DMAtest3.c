@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#define BUF_SIZE_W    7
-#define BURST_SIZE_W  2
+#define BUF_SIZE_W    4
+#define BURST_SIZE_W  3
 
 int DMAtest3 () {
   volatile uint32_t buffer[BUF_SIZE_W+50];
@@ -17,7 +17,7 @@ int DMAtest3 () {
   asm volatile("l.nios_rrr %[out1],%[in1],%[in2], 14" : [out1] "=r"(ret) : [in1] "r"(ctrl), [in2] "r"((uint32_t) buffer));
   ctrl = 0x2 << 9;
   asm volatile("l.nios_rrr %[out1],%[in1],%[in2], 14" : [out1] "=r"(ret) : [in1] "r"(ctrl), [in2] "r"(0));
-  printf("bus address %d %d\n", ret, (uint32_t) buffer);
+  printf("bus address \t\t%d\t%d\n", ret, (uint32_t) buffer);
   if(ret != (uint32_t) buffer)
   {
     printf("Error in reading bus address.\n");
@@ -29,7 +29,7 @@ int DMAtest3 () {
   asm volatile("l.nios_rrr %[out1],%[in1],%[in2], 14" : [out1] "=r"(ret) : [in1] "r"(ctrl), [in2] "r"(0));
   ctrl = 0x4 << 9;
   asm volatile("l.nios_rrr %[out1],%[in1],%[in2], 14" : [out1] "=r"(ret) : [in1] "r"(ctrl), [in2] "r"(0));
-  printf("memory address %d %d \n", ret, 0);
+  printf("memory address \t%d\t%d \n", ret, 0);
   if(ret != 0)
   {
     printf("Error in reading memory address\n");
@@ -41,7 +41,7 @@ int DMAtest3 () {
   asm volatile("l.nios_rrr %[out1],%[in1],%[in2], 14" : [out1] "=r"(ret) : [in1] "r"(ctrl), [in2] "r"(BURST_SIZE_W));
   ctrl = 0x8 << 9;
   asm volatile("l.nios_rrr %[out1],%[in1],%[in2], 14" : [out1] "=r"(ret) : [in1] "r"(ctrl), [in2] "r"(0));
-  printf("burst size %d %d\n", ret, BURST_SIZE_W);
+  printf("burst size \t\t%d\t%d\n", ret, BURST_SIZE_W);
   if(ret != BURST_SIZE_W)
   {
     printf("Error in reading burst size\n");
@@ -53,7 +53,7 @@ int DMAtest3 () {
   asm volatile("l.nios_rrr %[out1],%[in1],%[in2], 14" : [out1] "=r"(ret) : [in1] "r"(ctrl), [in2] "r"(BUF_SIZE_W));
   ctrl = 0x6 << 9;
   asm volatile("l.nios_rrr %[out1],%[in1],%[in2], 14" : [out1] "=r"(ret) : [in1] "r"(ctrl), [in2] "r"(0));
-  printf("block size %d %d\n", ret, BUF_SIZE_W);
+  printf("block size \t\t%d\t%d\n", ret, BUF_SIZE_W);
   if(ret != BUF_SIZE_W)
   {
     printf("Error in reading block size\n");
@@ -96,17 +96,16 @@ int DMAtest3 () {
       printf("-");
     else
     {
-      printf("transfer complete");
+      printf("transfer complete\n\n");
       break;
     }
   }
 
-  printf("evvai!\n");
   printf("now we should check the result\n");
-
-  for(uint32_t i = 0; i < 30; i++)
+  printf("buffer address %d\n", buffer);
+  for(volatile uint32_t i = 0; i < 200; i++)
   {
-    printf("buffer at index %d, value %d\n",i, buffer[i]);
+    printf("buffer at index %d, value %d\n",i, *(buffer-32+i));
   }
 
   printf("did it work? :)\n");
