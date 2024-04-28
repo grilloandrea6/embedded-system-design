@@ -157,7 +157,6 @@ end
            s_busDataInValidReg      = 1'b0,
            s_beginTransactionOutReg = 1'b0,
            s_endTransactionInReg    = 1'b0,
-           s_busyReg                = 1'b0,
            s_dataValidOutReg        = 1'b0,
            s_endTransactionOutReg      = 1'b0;
 (* preserve_for_debug *) reg [31:0] s_busDataOutReg          = 32'd0,
@@ -221,7 +220,7 @@ always @(posedge clock) begin
                                   ((s_dmaState == READ && s_busDataInValidReg == 1'd1) || (s_dmaState == WRITE && busyIn == 0)) ? s_busAddressReg + 32'd4 : s_busAddressReg;
     
 
-    // reset or increment burst count
+    // reset or increment block count
     s_blockCountReg             <= ((s_dmaState == INIT_R) || (s_dmaState == INIT_W)) ? block_size : 
                                 ((s_dmaState == READ && s_busDataInValidReg == 1'd1) || (s_dmaState == WRITE && busyIn == 0)) ? s_blockCountReg - 10'd1 : s_blockCountReg;
 
@@ -231,7 +230,6 @@ always @(posedge clock) begin
     s_busDataInValidReg     <= dataValidIn;
 //    s_busDataInReg          <= addressDataIn; // TODO endianness {addressDataIn[7:0], addressDataIn[15:8], addressDataIn[23:16], addressDataIn[31:24]};
     s_busDataInReg          <= {addressDataIn[7:0], addressDataIn[15:8], addressDataIn[23:16], addressDataIn[31:24]};
-    s_busyReg               <= busyIn;
 
     // send address when we start read or write transaction, if WRITE send data
     s_busDataOutReg         <= (s_dmaState == INIT_BURST_R || s_dmaState == INIT_BURST_W) ? s_busAddressReg : 
@@ -251,13 +249,10 @@ always @(posedge clock) begin
     status_reg[1]        <= (s_dmaState == ERROR) ? 1'b1 : 1'b0;
 
     s_dataValidOutReg    <= (s_dmaState == WRITE) ? 1'd1 : 1'd0; // when writing data is always valid
-    s_burstCountReg      <= (s_dmaState == REQUEST_BUS_W) ? (burst_size < (s_blockCountReg - 1)) ? burst_size : (s_blockCountReg - 1) : (s_dmaState == WRITE && busyIn == 0) ? s_burstCountReg - 8'd1 : s_burstCountReg;
-
-    //s_burstCountReg <= (s_dmaState == WRITE) ? 
-    //                   (s_busyReg): s_burstCountReg + 8'd1 : s_burstCountReg : 8'b0;
-    
-    
-
+    s_burstCountReg      <= (s_dmaState == REQUEST_BUS_W) ? 
+                                (burst_size < (s_blockCountReg - 1)) ? burst_size : (s_blockCountReg - 1) 
+                                                                    : (s_dmaState == WRITE && busyIn == 0) ? 
+                                                                    s_burstCountReg - 8'd1 : s_burstCountReg;
 
     s_endTransactionOutReg <= (s_dmaState == FINISH_WRITE) ? 1'd1 : 1'd0;
     byteEnablesOut       <= (s_dmaState == INIT_BURST_R || s_dmaState == INIT_BURST_W) ? 4'hF : 4'd0;
