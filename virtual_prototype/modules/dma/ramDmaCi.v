@@ -41,7 +41,8 @@ localparam [3:0] IDLE            = 4'd0,
                  WRITE           = 4'd8,
                  FINISH_WRITE    = 4'd9,
                  FINISH_WRITE_2  = 4'd10,
-                 ERROR           = 4'd11;
+                 ERROR           = 4'd11,
+                 CAZZO           = 4'd12;
 
 
 wire s_startCi = (ciN == customId) && start;
@@ -51,17 +52,16 @@ assign done = done_int;
 
 
 // Registers with info needed by DMA
-(* preserve_for_debug *) reg [31:0] bus_start_address        = 32'b0;
-(* preserve_for_debug *) reg [8:0]  memory_start_address     = 9'b0;
-(* preserve_for_debug *) reg [9:0]  block_size               = 10'b0;
-(* preserve_for_debug *) reg [7:0]  burst_size               = 8'b0;
-(* preserve_for_debug *) reg [1:0]  status_reg               = 2'b0;
-(* preserve_for_debug *) reg [1:0]  control_reg              = 2'b0;
-(* preserve_for_debug *) reg [3:0]  s_dmaState = IDLE, s_dmaStateNext = IDLE;
+reg [31:0] bus_start_address        = 32'b0;
+reg [8:0]  memory_start_address     = 9'b0;
+reg [9:0]  block_size               = 10'b0;
+reg [7:0]  burst_size               = 8'b0;
+reg [1:0]  status_reg               = 2'b0;
+reg [1:0]  control_reg              = 2'b0;
+reg [3:0]  s_dmaState = IDLE, s_dmaStateNext = IDLE;
 
 wire [31:0] dataoutB;
-wire [8:0] s_memoryAddressReg_input;
-wire        s_busDataInValidReg_input;
+wire [8:0] s_busDataInValidReg_input;
 wire [31:0] s_busDataInReg_input;
 
 
@@ -70,10 +70,10 @@ wire [31:0] s_busDataInReg_input;
 dmaMemory myDmaMemory
             (.clockA(clock),
             .clockB(~clock),
-            .writeEnableA(valueA[9] && (valueA[31:10] == 0) && s_startCi && s_dmaState == READ),
+            .writeEnableA(valueA[9] && (valueA[31:10] == 0) && s_startCi && s_dmaState == IDLE),
             .writeEnableB(s_dmaState == READ && s_busDataInValidReg_input),
             .addressA(valueA[8:0]),
-            .addressB(s_memoryAddressReg_input),
+            .addressB(s_memoryAddressReg),
             .dataInA(valueB),
             .dataInB(s_busDataInReg_input),
             .dataOutA(partial),
@@ -151,19 +151,20 @@ end
  *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-(* preserve_for_debug *) reg [9:0]  s_blockCountReg          = 10'd0;
-(* preserve_for_debug *) reg [7:0]  s_burstCountReg          = 8'd0;
-(* preserve_for_debug *) reg        s_startTransactionReg    = 1'b0,
+reg [9:0]  s_blockCountReg          = 10'd0;
+reg [7:0]  s_burstCountReg          = 8'd0;
+reg        s_startTransactionReg    = 1'b0,
            s_busDataInValidReg      = 1'b0,
            s_beginTransactionOutReg = 1'b0,
            s_endTransactionInReg    = 1'b0,
            s_dataValidOutReg        = 1'b0,
            s_endTransactionOutReg      = 1'b0;
-(* preserve_for_debug *) reg [31:0] s_busDataOutReg          = 32'd0,
+reg [31:0] s_busDataOutReg          = 32'd0,
+           s_cazzo = 32'd0,
            s_busDataInReg           = 32'd0;
 
-(* preserve_for_debug *) reg [31:0] s_busAddressReg          = 32'd0;
-(* preserve_for_debug *) reg [8:0]  s_memoryAddressReg       = 9'd0;
+reg [31:0] s_busAddressReg          = 32'd0;
+reg [8:0]  s_memoryAddressReg       = 9'd0;
 
 
 assign endTransactionOut   = s_endTransactionOutReg;
@@ -195,9 +196,9 @@ always @*
         INIT_BURST_W     : s_dmaStateNext <= WRITE;
         WRITE            : s_dmaStateNext <= (busErrorIn == 1'b1 && endTransactionIn == 1'b0) ? ERROR :
                                             (busErrorIn == 1'b1) ? IDLE :
-                                            //(s_burstCountReg == 8'b11111111) ? FINISH_WRITE : WRITE;
-                                            (s_burstCountReg == 0) ? FINISH_WRITE : WRITE;
-
+                                            //(s_burstCountReg == 0) ? FINISH_WRITE : WRITE;
+                                            (s_burstCountReg == 8'hFF) ? FINISH_WRITE : WRITE;
+        
         FINISH_WRITE     : s_dmaStateNext <= (s_blockCountReg == 0) ? IDLE : FINISH_WRITE_2;
 
         FINISH_WRITE_2   : s_dmaStateNext <= REQUEST_BUS_W;
@@ -207,13 +208,7 @@ always @*
         default          : s_dmaStateNext <= IDLE;
     endcase
 
-always @(posedge clock) begin
-    // update state
-    s_dmaState               <= (reset == 1'd1) ? IDLE : s_dmaStateNext;
-
-    // reset or increment memory address
-    s_memoryAddressReg           <= ((s_dmaState == INIT_R) || (s_dmaState == INIT_W)) ? memory_start_address : 
-                                ((s_dmaState == READ && s_busDataInValidReg == 1'd1) || (s_dmaState == WRITE && busyIn == 0)) ? s_memoryAddressReg + 9'd1 : s_memoryAddressReg;
+always @(negedge clock) begin
     
     // reset or increment bus address
     s_busAddressReg               <= ((s_dmaState == INIT_R) || (s_dmaState == INIT_W)) ? bus_start_address : 
@@ -224,18 +219,38 @@ always @(posedge clock) begin
     s_blockCountReg             <= ((s_dmaState == INIT_R) || (s_dmaState == INIT_W)) ? block_size : 
                                 ((s_dmaState == READ && s_busDataInValidReg == 1'd1) || (s_dmaState == WRITE && busyIn == 0)) ? s_blockCountReg - 10'd1 : s_blockCountReg;
 
+
+   // reset or increment memory address
+    s_memoryAddressReg           <= ((s_dmaState == INIT_R) || (s_dmaState == INIT_W)) ? memory_start_address : 
+                                ((s_dmaState == READ && s_busDataInValidReg == 1'd1) || (s_dmaState == WRITE && busyIn == 0)) ? s_memoryAddressReg + 9'd1 : s_memoryAddressReg;
+    
+    s_burstCountReg      <= (s_dmaState == REQUEST_BUS_W) ? 
+                                (burst_size < (s_blockCountReg - 1)) ? burst_size : (s_blockCountReg - 1) 
+                                                                    : (s_dmaState == WRITE && busyIn == 0) ? 
+                                                                    s_burstCountReg - 8'd1 : s_burstCountReg;
+end
+
+
+always @* begin
+      s_cazzo <= (s_dmaState == INIT_BURST_R || s_dmaState == INIT_BURST_W) ? s_busAddressReg : 
+                               (s_dmaState == WRITE) ? 
+                               (busyIn == 1'b1) ? s_cazzo : {dataoutB[7:0], dataoutB[15:8], dataoutB[23:16], dataoutB[31:24]} : 32'd0;
+end
+
+
+always @(posedge clock) begin
+    // update state
+    s_dmaState               <= (reset == 1'd1) ? IDLE :  s_dmaStateNext; // (s_dmaState == WRITE && busyIn) ? s_dmaState :
+
+
     // end transaction read from slave or reset
     s_endTransactionInReg   <= endTransactionIn & ~reset;
 
     s_busDataInValidReg     <= dataValidIn;
-//    s_busDataInReg          <= addressDataIn; // TODO endianness {addressDataIn[7:0], addressDataIn[15:8], addressDataIn[23:16], addressDataIn[31:24]};
     s_busDataInReg          <= {addressDataIn[7:0], addressDataIn[15:8], addressDataIn[23:16], addressDataIn[31:24]};
 
     // send address when we start read or write transaction, if WRITE send data
-    s_busDataOutReg         <= (s_dmaState == INIT_BURST_R || s_dmaState == INIT_BURST_W) ? s_busAddressReg : 
-                               //(s_dmaState == WRITE) ? dataoutB : 32'd0; // TODO endianness {dataoutB[7:0], dataoutB[15:8], dataoutB[23:16], dataoutB[31:24]} : 32'd0;
-                               (s_dmaState == WRITE) ? {dataoutB[7:0], dataoutB[15:8], dataoutB[23:16], dataoutB[31:24]} : 32'd0;
-
+    s_busDataOutReg       <= s_cazzo;
     // MASTER's outputs: start transaction
     s_beginTransactionOutReg <= (s_dmaState == INIT_BURST_R || s_dmaState == INIT_BURST_W) ? 1'd1 : 1'd0;
     readNotWriteOut          <= (s_dmaState == INIT_BURST_R) ? 1'd1 : 1'd0; 
@@ -249,17 +264,12 @@ always @(posedge clock) begin
     status_reg[1]        <= (s_dmaState == ERROR) ? 1'b1 : 1'b0;
 
     s_dataValidOutReg    <= (s_dmaState == WRITE) ? 1'd1 : 1'd0; // when writing data is always valid
-    s_burstCountReg      <= (s_dmaState == REQUEST_BUS_W) ? 
-                                (burst_size < (s_blockCountReg - 1)) ? burst_size : (s_blockCountReg - 1) 
-                                                                    : (s_dmaState == WRITE && busyIn == 0) ? 
-                                                                    s_burstCountReg - 8'd1 : s_burstCountReg;
 
     s_endTransactionOutReg <= (s_dmaState == FINISH_WRITE) ? 1'd1 : 1'd0;
     byteEnablesOut       <= (s_dmaState == INIT_BURST_R || s_dmaState == INIT_BURST_W) ? 4'hF : 4'd0;
 end
 
 assign s_busDataInValidReg_input = s_busDataInValidReg;
-assign s_memoryAddressReg_input = s_memoryAddressReg;
 assign s_busDataInReg_input = s_busDataInReg;
 
 endmodule

@@ -294,13 +294,13 @@ ramDmaCi #(.customId(8'd15)) DUT
         repeat(3) @(negedge clock); // simulate some delay before transaction is granted
 
         s_transactionGranted = 1'b1; // transaction is granted
-        @(negedge clock);
+        @(posedge clock);
         s_transactionGranted = 1'b0; // transaction granted finished
 
-        repeat(2) @(negedge clock);
+        repeat(3) @(posedge clock);
         
-        s_busyIn = 1'b1;
-        repeat(2) @(negedge clock);
+        s_busyIn = 1'b0;
+        repeat(1) @(posedge clock);
         s_busyIn = 0;
         repeat(10) @(negedge clock);
         
