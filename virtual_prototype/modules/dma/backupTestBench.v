@@ -138,8 +138,7 @@ ramDmaCi #(.customId(8'd15)) DUT
         // EXITci_readNotWriteOut: should be 1 , 0 all the other times
         // EXITci_beginTransactionOut: should be 1 , 0 all the other times
 
-        @(negedge clock); // DMA should now be in READ state
-        @(negedge clock); // DMA should now be in READ state
+        @(posedge clock); // DMA should now be in READ state
 
 
         /* * * *
@@ -147,26 +146,26 @@ ramDmaCi #(.customId(8'd15)) DUT
          * * * */
         s_dataValidIn = 1'b1;
         s_addressDataIn = 32'd10; // incoming data
-        repeat(2) @(negedge clock) begin
+        repeat(2) @(posedge clock) begin
             s_addressDataIn = s_addressDataIn + 32'd10;
         end
         // check that these values were assigned to s_busDataInReg_input -> read properly
-        @(negedge clock);
+        @(posedge clock);
         s_dataValidIn = 1'b0;
         s_addressDataIn = 0;
 
-        @(negedge clock); // DMA should now be in FINISH state
+        //@(posedge clock); // DMA should now be in FINISH state
         s_endTransactionIn = 1'b1;
-        @(negedge clock); // DMA should now be in FINISH state
+        @(posedge clock); // DMA should now be in FINISH state
         s_endTransactionIn = 1'b0;
 
-        repeat(2) @(negedge clock); // this should bring DMA into REQUEST_BUS_R state
+        repeat(2) @(posedge clock); // this should bring DMA into REQUEST_BUS_R state
         // CHECK:
         // EXITci_requestTransaction: should be 1 , 0 all the other times
-        repeat(2) @(negedge clock); // simulate some delay before transaction is granted
+        repeat(2) @(posedge clock); // simulate some delay before transaction is granted
 
         s_transactionGranted = 1'b1; // transaction is granted
-        @(negedge clock);
+        @(posedge clock);
         s_transactionGranted = 1'b0; // transaction granted finished
         
         
@@ -177,8 +176,8 @@ ramDmaCi #(.customId(8'd15)) DUT
         // EXITci_readNotWriteOut: should be 1 , 0 all the other times
         // EXITci_beginTransactionOut: should be 1 , 0 all the other times
 
-        @(negedge clock); // DMA should now be in READ state
-        @(negedge clock); // DMA should now be in READ state
+        @(posedge clock); // DMA should now be in READ state
+        @(posedge clock); // DMA should now be in READ state
 
 
         /* * * *
@@ -186,15 +185,14 @@ ramDmaCi #(.customId(8'd15)) DUT
          * * * */
         s_dataValidIn = 1'b1;
         s_addressDataIn = 32'd40; // incoming data
-        repeat(2) @(negedge clock) begin
+        repeat(2) @(posedge clock) begin
             s_addressDataIn = s_addressDataIn + 32'd10;
         end
         // check that these values were assigned to s_busDataInReg_input -> read properly
-        @(negedge clock);
+        @(posedge clock);
         s_dataValidIn = 1'b0;
         s_addressDataIn = 0;
 
-                @(negedge clock);
 
         
         
@@ -202,10 +200,10 @@ ramDmaCi #(.customId(8'd15)) DUT
          * PHASE 4: end transaction
          * * * */
         s_endTransactionIn = 1'b1;
-        @(negedge clock); // DMA should now be in FINISH state
+        @(posedge clock); // DMA should now be in FINISH state
         s_endTransactionIn = 1'b0;
 
-        repeat(5) @(negedge clock);  // wait
+        repeat(5) @(posedge clock);  // wait
 
       //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
       // FINE READ /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -299,10 +297,10 @@ ramDmaCi #(.customId(8'd15)) DUT
         @(posedge clock);
         s_transactionGranted = 1'b0; // transaction granted finished
 
-        repeat(4) @(posedge clock);
+        repeat(3) @(posedge clock);
         
         //s_busyIn = 1'b1;
-        repeat(4) @(posedge clock);
+        repeat(1) @(posedge clock);
         s_busyIn = 0;
         repeat(10) @(negedge clock);
         
