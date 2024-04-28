@@ -32,7 +32,7 @@ module tb_ramDmaCi;
       clock = 1'b0;
       repeat (4) #5 clock = ~clock;
       reset = 1'b0;
-      forever #5 clock = ~clock;
+      repeat (500) #5 clock = ~clock;
     end
 
     initial begin
@@ -83,18 +83,142 @@ ramDmaCi #(.customId(8'd15)) DUT
          * PHASE 1: set up register for DMA functioning
          * * * */
 
+        @(negedge reset);            // wait for the reset period to end
+        repeat(2) @(negedge clock);  // wait
+
         s_ciN = 8'd15;
         s_valueA[31:0] = 0;
         s_valueA[9] = 1'b1;     
         s_start = 1'b1;
         
-        @(negedge reset);            // wait for the reset period to end
-        repeat(2) @(negedge clock);  // wait
 
         s_valueB = 32'd55; // bus start address
         s_valueA[12:10] = 3'b001; // write it
+        @(posedge clock);
+
+        s_valueB = 32'd0; // memory start address
+        s_valueA[12:10] = 3'b010; // write it
+        @(posedge clock);
+        
+        s_valueB = 32'd5; // block size address
+        s_valueA[12:10] = 3'b011; // write it
+
+        @(posedge clock);
+        s_start = 1'b0;
+        @(posedge clock);
+        s_start = 1'b1;
+
+        s_valueB = 32'd2; // burst size
+        s_valueA[12:10] = 3'b100; // write it
+        repeat(2) @(posedge clock);
+        // All registers for DMA are set up
+
+s_busErrorIn = 1'b0;
+        
+        s_valueB[31:0] = 31'd1; // start DMA
+        s_valueA[12:10] = 3'b101; // write it
+        repeat(2) @(posedge clock); // this should bring DMA into REQUEST_BUS_R state
+        // CHECK:
+        // EXITci_requestTransaction: should be 1 , 0 all the other times
+        repeat(2) @(posedge clock); // simulate some delay before transaction is granted
+
+        s_transactionGranted = 1'b1; // transaction is granted
+        @(posedge clock);
+        s_transactionGranted = 1'b0; // transaction granted finished
+        
+        
+        // * * * * * DMA should now be in INIT_BURST_R state
+        // CHECK:
+        // EXITci_addressDataOut: should match 's_busAddressReg' , is 0 all the other times
+        // EXITci_burstSizeOut: should match 'burst_size' , is 0 all the other times
+        // EXITci_readNotWriteOut: should be 1 , 0 all the other times
+        // EXITci_beginTransactionOut: should be 1 , 0 all the other times
+
+        @(posedge clock); // DMA should now be in READ state
+
+
+        /* * * *
+         * PHASE 3: read data
+         * * * */
+        s_dataValidIn = 1'b1;
+        s_addressDataIn = 32'd33; // incoming data
+        repeat(2) @(posedge clock) begin
+            s_addressDataIn = s_addressDataIn + 32'd10;
+        end
+        // check that these values were assigned to s_busDataInReg_input -> read properly
+        @(posedge clock);
+        s_addressDataIn = 0;
+        s_dataValidIn = 1'b0;
+        
+        
+        // simulate non valid data
+        // repeat(5) @(posedge clock) begin
+        //     s_addressDataIn = 32'd999;
+        // end
+
+        /* * * *
+         * PHASE 4: end transaction
+         * * * */
+        s_endTransactionIn = 1'b1;
+        @(posedge clock); // DMA should now be in FINISH state
+        s_endTransactionIn = 1'b0;
+
+s_transactionGranted = 1'b1; // transaction is granted
+        @(posedge clock);
+        s_transactionGranted = 1'b0; // transaction granted finished
+        
+        
+        // * * * * * DMA should now be in INIT_BURST_R state
+        // CHECK:
+        // EXITci_addressDataOut: should match 's_busAddressReg' , is 0 all the other times
+        // EXITci_burstSizeOut: should match 'burst_size' , is 0 all the other times
+        // EXITci_readNotWriteOut: should be 1 , 0 all the other times
+        // EXITci_beginTransactionOut: should be 1 , 0 all the other times
+
+        @(posedge clock); // DMA should now be in READ state
+
+
+        /* * * *
+         * PHASE 3: read data
+         * * * */
+        s_dataValidIn = 1'b1;
+        s_addressDataIn = 32'd33; // incoming data
+        repeat(2) @(posedge clock) begin
+            s_addressDataIn = s_addressDataIn + 32'd10;
+        end
+        // check that these values were assigned to s_busDataInReg_input -> read properly
+        @(posedge clock);
+        s_addressDataIn = 0;
+        s_dataValidIn = 1'b0;
+        
+        
+        // simulate non valid data
+        // repeat(5) @(posedge clock) begin
+        //     s_addressDataIn = 32'd999;
+        // end
+
+        /* * * *
+         * PHASE 4: end transaction
+         * * * */
+        s_endTransactionIn = 1'b1;
+        @(posedge clock); // DMA should now be in FINISH state
+        s_endTransactionIn = 1'b0;
+
+
+
+
+        s_ciN = 8'd15;
+        s_valueA[31:0] = 0;
+        s_valueA[9] = 1'b1;     
+        s_start = 1'b1;
+        
+        
+        repeat(2) @(negedge clock);  // wait
+
+        s_valueB = 32'd13; // bus start address
+        s_valueA[12:10] = 3'b001; // write it
         @(negedge clock);
-        s_valueB = 32'd66; // memory start address
+        s_valueB = 32'd0; // memory start address
         s_valueA[12:10] = 3'b010; // write it
         @(negedge clock);
         

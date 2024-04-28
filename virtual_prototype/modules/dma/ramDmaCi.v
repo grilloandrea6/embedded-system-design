@@ -70,7 +70,7 @@ wire [31:0] s_busDataInReg_input;
 dmaMemory myDmaMemory
             (.clockA(clock),
             .clockB(~clock),
-            .writeEnableA(valueA[9] && (valueA[31:10] == 0) && s_startCi),
+            .writeEnableA(valueA[9] && (valueA[31:10] == 0) && s_startCi && s_dmaState == READ),
             .writeEnableB(s_dmaState == READ && s_busDataInValidReg_input),
             .addressA(valueA[8:0]),
             .addressB(s_memoryAddressReg_input),
@@ -196,7 +196,8 @@ always @*
         INIT_BURST_W     : s_dmaStateNext <= WRITE;
         WRITE            : s_dmaStateNext <= (busErrorIn == 1'b1 && endTransactionIn == 1'b0) ? ERROR :
                                             (busErrorIn == 1'b1) ? IDLE :
-                                            (s_burstCountReg == 8'b11111111) ? FINISH_WRITE : WRITE;
+                                            //(s_burstCountReg == 8'b11111111) ? FINISH_WRITE : WRITE;
+                                            (s_burstCountReg == 0) ? FINISH_WRITE : WRITE;
 
         FINISH_WRITE     : s_dmaStateNext <= (s_blockCountReg == 0) ? IDLE : FINISH_WRITE_2;
 
@@ -228,11 +229,13 @@ always @(posedge clock) begin
     s_endTransactionInReg   <= endTransactionIn & ~reset;
 
     s_busDataInValidReg     <= dataValidIn;
+//    s_busDataInReg          <= addressDataIn; // TODO endianness {addressDataIn[7:0], addressDataIn[15:8], addressDataIn[23:16], addressDataIn[31:24]};
     s_busDataInReg          <= {addressDataIn[7:0], addressDataIn[15:8], addressDataIn[23:16], addressDataIn[31:24]};
     s_busyReg               <= busyIn;
 
     // send address when we start read or write transaction, if WRITE send data
     s_busDataOutReg         <= (s_dmaState == INIT_BURST_R || s_dmaState == INIT_BURST_W) ? s_busAddressReg : 
+                               //(s_dmaState == WRITE) ? dataoutB : 32'd0; // TODO endianness {dataoutB[7:0], dataoutB[15:8], dataoutB[23:16], dataoutB[31:24]} : 32'd0;
                                (s_dmaState == WRITE) ? {dataoutB[7:0], dataoutB[15:8], dataoutB[23:16], dataoutB[31:24]} : 32'd0;
 
     // MASTER's outputs: start transaction
