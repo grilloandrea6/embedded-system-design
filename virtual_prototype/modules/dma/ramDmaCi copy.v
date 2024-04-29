@@ -45,8 +45,7 @@ localparam [3:0] IDLE            = 4'd0,
 reg [9:0]  s_blockCountReg          = 10'd0;
 reg [7:0]  s_burstCountReg          = 8'd0;
 reg        s_busDataInValidReg      = 1'b0,
-           s_endTransactionInReg    = 1'b0,
-           s_busyIn                 = 1'b0;
+           s_endTransactionInReg    = 1'b0;
 reg [31:0] s_busDataInReg           = 32'd0;
 
 reg [31:0] s_busAddressReg          = 32'd0;
@@ -195,7 +194,7 @@ always @*
         INIT_BURST_W     : s_dmaStateNext <= WRITE;
         WRITE            : s_dmaStateNext <= (busErrorIn == 1'b1 && endTransactionIn == 1'b0) ? ERROR :
                                             (busErrorIn == 1'b1) ? IDLE :
-                                            (s_burstCountReg == 0 && s_busyIn == 0) ? FINISH_WRITE : WRITE;
+                                            (s_burstCountReg == 0) ? FINISH_WRITE : WRITE;
                                             //(s_burstCountReg == 8'hFF) ? FINISH_WRITE : WRITE;
         
         FINISH_WRITE     : s_dmaStateNext <= (s_blockCountReg == 0) ? IDLE : REQUEST_BUS_W;
@@ -204,10 +203,6 @@ always @*
 
         default          : s_dmaStateNext <= IDLE;
     endcase
-
-always @(posedge clock) begin
-    s_busyIn <= busyIn;
-end
 
 always @(posedge clock) begin
     // update state
@@ -230,22 +225,31 @@ always @(posedge clock) begin
 
     // reset or increment bus address
     s_busAddressReg               <= ((s_dmaState == INIT_R) || (s_dmaState == INIT_W)) ? bus_start_address : 
-                                  ((s_dmaState == READ && s_busDataInValidReg == 1'd1) || (s_dmaState == WRITE && s_busyIn == 0)) ? s_busAddressReg + 32'd4 : s_busAddressReg;
+                                  ((s_dmaState == READ && s_busDataInValidReg == 1'd1) || (s_dmaState == WRITE && busyIn == 0)) ? s_busAddressReg + 32'd4 : s_busAddressReg;
     
 
     // reset or increment block count
     s_blockCountReg             <= ((s_dmaState == INIT_R) || (s_dmaState == INIT_W)) ? block_size : 
-                                ((s_dmaState == READ && s_busDataInValidReg == 1'd1) || (s_dmaState == WRITE && s_busyIn == 0)) ? s_blockCountReg - 10'd1 : s_blockCountReg;
+                                ((s_dmaState == READ && s_busDataInValidReg == 1'd1) || (s_dmaState == WRITE && busyIn == 0)) ? s_blockCountReg - 10'd1 : s_blockCountReg;
 
 
    // reset or increment memory address
     s_memoryAddressReg           <= ((s_dmaState == INIT_R) || (s_dmaState == INIT_W)) ? memory_start_address : 
                                 (s_dmaState == READ && s_busDataInValidReg == 1'd1) || 
-                                ((s_dmaState == WRITE || (s_dmaState == INIT_BURST_W)) && busyIn == 0 && s_burstCountReg) ? s_memoryAddressReg + 9'd1 : s_memoryAddressReg;
+                                ((s_dmaState == WRITE || (s_dmaState == INIT_BURST_W/* && s_blockCountReg == block_size*/)) && busyIn == 0 && s_burstCountReg) ? s_memoryAddressReg + 9'd1 : s_memoryAddressReg;
      
     s_burstCountReg      <= (s_dmaState == REQUEST_BUS_W) ? 
                                 (burst_size < (s_blockCountReg - 1)) ? burst_size : (s_blockCountReg - 1) :
-                                (s_dmaState == WRITE && s_busyIn == 0) ? s_burstCountReg - 8'd1 : s_burstCountReg;
+                                (s_dmaState == WRITE && busyIn == 0) ? s_burstCountReg - 8'd1 : s_burstCountReg;
+end
+
+always @(busyIn) begin
+    if(busyIn) begin
+        s_burstCountReg <= s_burstCountReg - 8'd1;
+        s_memoryAddressReg <= s_memoryAddressReg - 9'd1;
+        s_blockCountReg <= s_blockCountReg + 10'd1;
+        s_busAddressReg <= s_busAddressReg - 32'd4;
+    end
 end
 
 

@@ -299,10 +299,10 @@ ramDmaCi #(.customId(8'd15)) DUT
         @(negedge clock);
         s_transactionGranted = 1'b0; // transaction granted finished
 
-        //repeat(1) @(negedge clock);
+        repeat(2) @(negedge clock);
         
         s_busyIn = 1'b1;
-        repeat(4) @(negedge clock);
+        repeat(3) @(negedge clock);
         s_busyIn = 0;
         repeat(10) @(negedge clock);
         
