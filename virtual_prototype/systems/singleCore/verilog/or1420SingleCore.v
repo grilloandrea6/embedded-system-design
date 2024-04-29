@@ -465,11 +465,11 @@ module or1420SingleCore ( input wire         clock12MHz,
    *
    */
 
-  (* preserve_for_debug *) wire        s_dmaRequestBus, s_dmaBusGranted, s_dmaBeginTransaction;
-  (* preserve_for_debug *) wire        s_dmaEndTransaction, s_dmaDataValid, s_dmaReadNotWrite;
-  (* preserve_for_debug *) wire [7:0]  s_dmaBurstSize;
-  (* preserve_for_debug *) wire [31:0] s_dmaAddressData;
-  // Do we need byteEnable?
+  wire        s_dmaRequestBus, s_dmaBusGranted, s_dmaBeginTransaction;
+  wire        s_dmaEndTransaction, s_dmaDataValid, s_dmaReadNotWrite;
+  wire [7:0]  s_dmaBurstSize;
+  wire [31:0] s_dmaAddressData;
+  wire [3:0] s_dmabyteEnables;
 
   ramDmaCi #(.customId(8'd14)) myRamDmaCi
                 (.start(s_cpu1CiStart),

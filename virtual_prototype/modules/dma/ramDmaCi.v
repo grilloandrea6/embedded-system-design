@@ -244,7 +244,7 @@ always @(posedge clock) begin
                                 ((s_dmaState == WRITE || (s_dmaState == INIT_BURST_W)) && busyIn == 0 && s_burstCountReg) ? s_memoryAddressReg + 9'd1 : s_memoryAddressReg;
      
     s_burstCountReg      <= (s_dmaState == REQUEST_BUS_W) ? 
-                                (burst_size < (s_blockCountReg - 1)) ? burst_size : (s_blockCountReg - 1) :
+                                (burst_size < (s_blockCountReg - 10'd1)) ? burst_size : (s_blockCountReg - 10'd1) :
                                 (s_dmaState == WRITE && s_busyIn == 0) ? s_burstCountReg - 8'd1 : s_burstCountReg;
 end
 
