@@ -71,8 +71,6 @@ reg [3:0]  s_dmaState = IDLE, s_dmaStateNext = IDLE;
 wire [31:0] dataoutB;
 reg [31:0] s_dataoutB;
 
-
-
 dmaMemory myDmaMemory
             (.clockA(clock),
             .clockB(~clock),
@@ -160,9 +158,6 @@ end
 
 
 assign endTransactionOut   = (s_dmaState == FINISH_WRITE) ? 1'd1 : 1'd0;
-
-// send address when we start read or write transaction, if WRITE send data
-
 assign addressDataOut      = (s_dmaState == INIT_BURST_R || s_dmaState == INIT_BURST_W) ? s_busAddressReg : 
                              (s_dmaState == WRITE) ? {s_dataoutB[7:0], s_dataoutB[15:8], s_dataoutB[23:16], s_dataoutB[31:24]} : 32'd0;
 assign beginTransactionOut = (s_dmaState == INIT_BURST_R || s_dmaState == INIT_BURST_W) ? 1'd1 : 1'd0;
@@ -196,7 +191,6 @@ always @*
         WRITE            : s_dmaStateNext <= (busErrorIn == 1'b1 && endTransactionIn == 1'b0) ? ERROR :
                                             (busErrorIn == 1'b1) ? IDLE :
                                             (s_burstCountReg == 0 && s_busyIn == 0) ? FINISH_WRITE : WRITE;
-                                            //(s_burstCountReg == 8'hFF) ? FINISH_WRITE : WRITE;
         
         FINISH_WRITE     : s_dmaStateNext <= (s_blockCountReg == 0) ? IDLE : REQUEST_BUS_W;
 
@@ -241,7 +235,7 @@ always @(posedge clock) begin
    // reset or increment memory address
     s_memoryAddressReg           <= ((s_dmaState == INIT_R) || (s_dmaState == INIT_W)) ? memory_start_address : 
                                 (s_dmaState == READ && s_busDataInValidReg == 1'd1) || 
-                                ((s_dmaState == WRITE) && busyIn == 0) ? s_memoryAddressReg + 9'd1 : s_memoryAddressReg;
+                                ((s_dmaState == WRITE) && s_busyIn == 0) ? s_memoryAddressReg + 9'd1 : s_memoryAddressReg;
      
     s_burstCountReg      <= (s_dmaState == REQUEST_BUS_W) ? 
                                 (burst_size < (s_blockCountReg - 10'd1)) ? burst_size : (s_blockCountReg - 10'd1) :
