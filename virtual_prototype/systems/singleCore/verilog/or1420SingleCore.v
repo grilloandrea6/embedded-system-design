@@ -469,7 +469,7 @@ module or1420SingleCore ( input wire         clock12MHz,
   wire        s_dmaEndTransaction, s_dmaDataValid, s_dmaReadNotWrite;
   wire [7:0]  s_dmaBurstSize;
   wire [31:0] s_dmaAddressData;
-  // Do we need byteEnable?
+  wire [3:0] s_dmabyteEnables;
 
   ramDmaCi #(.customId(8'd14)) myRamDmaCi
                 (.start(s_cpu1CiStart),
@@ -482,17 +482,16 @@ module or1420SingleCore ( input wire         clock12MHz,
                 // Define bus interface
                 // Input
                 .addressDataIn(s_addressData),
-                .burstSizeIn(s_burstSize),
-                .beginTransactionIn(s_beginTransaction),
                 .endTransactionIn(s_endTransaction),
                 .dataValidIn(s_dataValid),
                 .busErrorIn(s_busError),
                 .transactionGranted(s_dmaBusGranted),
-                .readNotWriteIn(s_readNotWrite),
+                .busyIn(s_busy),
 
                 // Output
                 .addressDataOut(s_dmaAddressData),
-                .s_burstSizeOut(s_dmaBurstSize),
+                .byteEnablesOut(s_dmabyteEnables),
+                .burstSizeOut(s_dmaBurstSize),
                 .requestTransaction(s_dmaRequestBus), //
                 .beginTransactionOut(s_dmaBeginTransaction),
                 .endTransactionOut(s_dmaEndTransaction),
@@ -733,7 +732,7 @@ module or1420SingleCore ( input wire         clock12MHz,
                              s_sdramEndTransaction | s_hdmiEndTransaction | s_flashEndTransaction | s_camEndTransaction | s_dmaEndTransaction; // Added s_dmaEndTransaction
  assign s_addressData      = s_cpu1AddressData | s_biosAddressData | s_uartAddressData | s_sdramAddressData | s_hdmiAddressData |
                              s_flashAddressData | s_camAddressData | s_dmaAddressData; // Added s_dmaAddressData
- assign s_byteEnables      = s_cpu1byteEnables | s_hdmiByteEnables | s_camByteEnables;
+ assign s_byteEnables      = s_cpu1byteEnables | s_hdmiByteEnables | s_camByteEnables | s_dmabyteEnables; // Added s_dmabyteEnables
  assign s_readNotWrite     = s_cpu1ReadNotWrite | s_hdmiReadNotWrite | s_dmaReadNotWrite; // Added s_dmaReadNotWrite
  assign s_dataValid        = s_cpu1DataValid | s_biosDataValid | s_uartDataValid | s_sdramDataValid | s_hdmiDataValid | 
                              s_flashDataValid | s_camDataValid | s_dmaDataValid; // Added s_dmaDataValid

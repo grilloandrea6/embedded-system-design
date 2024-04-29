@@ -1,15 +1,15 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#define BUF_SIZE    400
-#define BURST_SIZE  1
+#define BUF_SIZE    13
+#define BURST_SIZE  3
 
 int DMAtest2 () {
-  volatile uint32_t buffer[BUF_SIZE];
+  volatile uint32_t buffer[BUF_SIZE+5];
   volatile uint32_t ret, ctrl;
 
-  for(volatile uint32_t i = 0; i < BUF_SIZE; i++)
-    buffer[i] = i;
+  for(volatile uint32_t i = 0; i < BUF_SIZE+5; i++)
+    buffer[i] = 321 + i;
 
   // write bus address - buffer
   ctrl = 0x3 << 9;
@@ -70,46 +70,46 @@ int DMAtest2 () {
     if(ret & 0x1)
     {
       printf("-");
+    } else break;
+  }
+  printf("DMA is free\n");
+
+
+  // set control register - 0x1
+  ctrl = 0xB << 9;
+  asm volatile("l.nios_rrr %[out1],%[in1],%[in2], 14" : [out1] "=r"(ret) : [in1] "r"(ctrl), [in2] "r"(0x1));
+  printf("control register set\n");
+
+  while(1)
+  {
+    // read status register
+    ctrl = 0xA << 9;
+    asm volatile("l.nios_rrr %[out1],%[in1],%[in2], 14" : [out1] "=r"(ret) : [in1] "r"(ctrl), [in2] "r"(0x1));
+    
+    if((ret >> 1) & 0x1)
+    {
+      printf("bus error\n");
+      return -1;
+    }
+
+    if(ret & 0x1)
+      printf("-");
+    else
+    {
+      printf("transfer complete");
+      break;
     }
   }
-  printf("DMA is free");
 
-  // // set control register - 0x1
-  // ctrl = 0xB << 9;
-  // asm volatile("l.nios_rrr %[out1],%[in1],%[in2], 14" : [out1] "=r"(ret) : [in1] "r"(ctrl), [in2] "r"(0x1));
-  // printf("control register set\n");
+  printf("evvai!\n");
+  printf("now we should check the result\n");
 
-  // while(1)
-  // {
-  //   // read status register
-  //   ctrl = 0xA << 9;
-  //   asm volatile("l.nios_rrr %[out1],%[in1],%[in2], 14" : [out1] "=r"(ret) : [in1] "r"(ctrl), [in2] "r"(0x1));
-    
-  //   if((ret >> 1) & 0x1)
-  //   {
-  //     printf("bus error\n");
-  //     return -1;
-  //   }
+  for(uint32_t i = 0; i < 20; i++) // ToDo: sizeof(indexes)/sizeof(uint32_t)
+  {
+    asm volatile("l.nios_rrr %[out1],%[in1],%[in2], 14" : [out1] "=r"(ret) : [in1] "r"(i), [in2] "r"(0));
+    printf("read memory at index %d, value %d\n",i, ret);
+  }
 
-  //   if(ret & 0x1)
-  //     printf("-");
-  //   else
-  //   {
-  //     printf("transfer complete");
-  //     break;
-  //   }
-  // }
-
-  // printf("evvai!\n");
-  // printf("now we should check the result\n");
-
-  // uint32_t indexes[] = {15, 18, 35, 183, 237, 391};
-  // for(uint32_t i = 0; i < 6; i++) // ToDo: sizeof(indexes)/sizeof(uint32_t)
-  // {
-  //   asm volatile("l.nios_rrr %[out1],%[in1],%[in2], 14" : [out1] "=r"(ret) : [in1] "r"(indexes[i]), [in2] "r"(0));
-  //   printf("read memory at index %d, value %d\n",indexes[i], ret);
-  // }
-
-  // printf("did it work? :)\n");
+  printf("did it work? :)\n");
 
 }

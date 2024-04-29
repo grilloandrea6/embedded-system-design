@@ -1,3 +1,4 @@
+*/*/*/build-release/
 *.cmem
 *.elf
 *.mem
@@ -6,3 +7,15 @@
 *.s.o
 .vscode/
 virtual_prototype/systems/singleCore/sandbox/
+*/*.c.o
+*/*.c.d
+*/*/*.c.o
+*/*/*.c.d
+*/*/*/*.c.o
+*/*/*/*.c.d
+*/*/*/*/*.c.o
+*/*/*/*/*.c.d
+*/*/*/*/*/*.c.o
+*/*/*/*/*/*.c.d
+*/*/*/*/*/*/*.c.o
+*/*/*/*/*/*/*.c.d

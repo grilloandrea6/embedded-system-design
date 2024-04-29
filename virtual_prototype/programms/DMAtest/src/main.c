@@ -9,12 +9,12 @@ int DMAtest3();
 int main() {
   vga_clear();
 
-  printf("running dma test 1\n");
+  printf("-------------------------------\nRunning dma test 1\n-------------------------------\n");
   DMAtest1();
 
-  printf("running dma test 2\n");
+  printf("\n\n-------------------------------\nRunning dma test 2\n-------------------------------\n");
   DMAtest2();
 
-  printf("running dma test 3\n");
+  printf("\n\n-------------------------------\nRunning dma test 3\n-------------------------------\n");
   DMAtest3();
 }
