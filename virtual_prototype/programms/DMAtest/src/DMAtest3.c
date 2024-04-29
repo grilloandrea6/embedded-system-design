@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#define BUF_SIZE_W    9
-#define BURST_SIZE_W  2
+#define BUF_SIZE_W    18
+#define BURST_SIZE_W  13
 
 int DMAtest3 () {
   volatile uint32_t buffer[BUF_SIZE_W+50];
@@ -111,7 +111,7 @@ int DMAtest3 () {
   printf("buffer address %d\n", buffer);
   for(volatile uint32_t i = 0; i < BUF_SIZE_W+50; i++)
   {
-    printf("buffer at address %d, index %d, value %d\n",&buffer[i], i, buffer[i]);
+    printf("buffer at address %d, index %d, value %d\n",&buffer[i-1], i-1, *(buffer + i - 1));
   }
 
   printf("did it work? :)\n");
