@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#define BUF_SIZE_W    1020
-#define BURST_SIZE_W  0
+#define BUF_SIZE_W    9
+#define BURST_SIZE_W  2
 
 int DMAtest3 () {
   volatile uint32_t buffer[BUF_SIZE_W+50];

@@ -205,7 +205,7 @@ always @*
         default          : s_dmaStateNext <= IDLE;
     endcase
 
-always @(posedge clock) begin
+always @(negedge clock) begin
     s_busyIn <= busyIn;
 end
 
