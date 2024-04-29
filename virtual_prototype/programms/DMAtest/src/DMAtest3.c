@@ -1,15 +1,15 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#define BUF_SIZE_W    4
-#define BURST_SIZE_W  3
+#define BUF_SIZE_W    1020
+#define BURST_SIZE_W  0
 
 int DMAtest3 () {
   volatile uint32_t buffer[BUF_SIZE_W+50];
   volatile uint32_t ret, ctrl;
 
   for(volatile uint32_t i = 0; i < BUF_SIZE_W+50; i++)
-    buffer[i] = 100;
+    buffer[i] = 35;
 
  
   // write bus address - buffer
@@ -92,8 +92,14 @@ int DMAtest3 () {
       return -1;
     }
 
-    if(ret & 0x1)
+    if(ret & 0x1){
       printf("-");
+      for(volatile uint32_t i = 0; i < 10; i++)
+      {
+        printf("buffer at index %d, value %d\n",i, buffer[i]);
+      }
+    }
+
     else
     {
       printf("transfer complete\n\n");
@@ -103,9 +109,9 @@ int DMAtest3 () {
 
   printf("now we should check the result\n");
   printf("buffer address %d\n", buffer);
-  for(volatile uint32_t i = 0; i < 200; i++)
+  for(volatile uint32_t i = 0; i < BUF_SIZE_W+50; i++)
   {
-    printf("buffer at index %d, value %d\n",i, *(buffer-32+i));
+    printf("buffer at address %d, index %d, value %d\n",&buffer[i], i, buffer[i]);
   }
 
   printf("did it work? :)\n");
