@@ -167,6 +167,7 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
   wire [31:0] s_busPixelWord;
   wire [31:0] s_pixelWord = {s_byte3Reg,s_byte2Reg,s_byte1Reg,camData};
   wire s_weLineBuffer = (s_pixelCountReg[1:0] == 2'b11) ? hsync : 1'b0;
+  wire [31:0] s_grayscalePixelWord;
   
   always @(posedge pclk)
     begin
@@ -175,12 +176,22 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
       s_byte1Reg <= (s_pixelCountReg[1:0] == 2'b10 && hsync == 1'b1) ? camData : s_byte1Reg;
     end
   
+// Va bene fargli fare tutto in modo asincrono?
+rgb565GrayscaleIse #(.customInstructionId(1'b0)) grayscale_converter
+                            (start(1'b1),
+                             .valueA(s_pixelWord),
+                             .valueB(32'b0),
+                             .iseId(1'b0),
+                             .done(),
+                             .result(s_grayscalePixelWord) );
+
+
   dualPortRam2k lineBuffer ( .address1(s_pixelCountReg[10:2]),
                              .address2(s_busSelectReg),
                              .clock1(pclk),
                              .clock2(clock),
                              .writeEnable(s_weLineBuffer),
-                             .dataIn1(s_pixelWord),
+                             .dataIn1(s_grayscalePixelWord[31:16]),
                              .dataOut2(s_busPixelWord));
 
   /*
