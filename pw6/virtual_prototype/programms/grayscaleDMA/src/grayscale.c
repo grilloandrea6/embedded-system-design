@@ -3,7 +3,7 @@
 #include <swap.h>
 #include <vga.h>
 
-#define BURST_SIZE 16
+#define BURST_SIZE 31
 
 int main () {
   volatile uint32_t ret;
@@ -94,7 +94,7 @@ int main () {
         asm volatile("l.nios_rrr %[out1],%[in1],%[in2], 20" : [out1] "=r"(pixel34) : [in1] "r"(z + j + 1), [in2] "r"(0));
         //printf("pixel12: %d, pixel34: %d\n", pixel12, pixel34);
         // call grayscale custom instruction
-        asm volatile ("l.nios_rrr %[out1],%[in1],%[in2],0x9":[out1]"=r"(grayPixels):[in1]"r"(pixel12),[in2]"r"(pixel34));
+        asm volatile ("l.nios_rrr %[out1],%[in1],%[in2],0x9":[out1]"=r"(grayPixels):[in1]"r"(swap_u32(pixel34)),[in2]"r"(swap_u32(pixel12)));
         //printf("grayPixels: %d\n", grayPixels);
         // store result in ci memory
         asm volatile("l.nios_rrr %[out1],%[in1],%[in2], 20" : [out1] "=r"(ret) : [in1] "r"(0x200 | (z + k)), [in2] "r"(grayPixels));
