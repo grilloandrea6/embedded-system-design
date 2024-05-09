@@ -85,7 +85,7 @@ int main () {
         asm volatile("l.nios_rrr %[out1],%[in1],%[in2], 20" : [out1] "=r"(ret) : [in1] "r"(0xB << 9), [in2] "r"(0x1));
       }
 
-      for (volatile int j = 0, k = 0; j < 256; j += 2, k++) {
+      for (int j = 0; j < 256; j += 2) {
         int z = (i&0x1) * 256;
         //printf("j: %d, k: %d\n", j, k);
         uint32_t pixel12, pixel34;
@@ -97,7 +97,7 @@ int main () {
         asm volatile ("l.nios_rrr %[out1],%[in1],%[in2],0x9":[out1]"=r"(grayPixels):[in1]"r"(swap_u32(pixel34)),[in2]"r"(swap_u32(pixel12)));
         //printf("grayPixels: %d\n", grayPixels);
         // store result in ci memory
-        asm volatile("l.nios_rrr %[out1],%[in1],%[in2], 20" : [out1] "=r"(ret) : [in1] "r"(0x200 | (z + k)), [in2] "r"(grayPixels));
+        asm volatile("l.nios_rrr %[out1],%[in1],%[in2], 20" : [out1] "=r"(ret) : [in1] "r"(0x200 | (z + (j>>1))), [in2] "r"(grayPixels));
       }
 
       // wait for dma to finish
