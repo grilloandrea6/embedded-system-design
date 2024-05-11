@@ -67,8 +67,8 @@ int main () {
 
     // printf("finished first transfer\n");
 
-    for(volatile int i = 0; i < 600; i++) {
-      uint32_t * rgb = &((uint32_t *)rgb565)[256 * (i + 1)];
+    for(int i = 0; i < 600; i++) {
+      uint32_t * rgb = &((uint32_t *)rgb565)[256 * (i+1)];
       
 
       if(i != 599) {
@@ -84,9 +84,10 @@ int main () {
         // start dma from memory to CI
         asm volatile("l.nios_rrr %[out1],%[in1],%[in2], 20" : [out1] "=r"(ret) : [in1] "r"(0xB << 9), [in2] "r"(0x1));
       }
-
-      for (volatile int j = 0, k = 0; j < 256; j += 2, k++) {
-        int z = (i&0x1) * 256;
+      
+      int z = (i&0x1) ? 256 : 0;
+      
+      for (int j = 0, k = 0; j < 256; j += 2, k++) {  
         //printf("j: %d, k: %d\n", j, k);
         uint32_t pixel12, pixel34;
         // take pixels crom ci memory
@@ -112,7 +113,7 @@ int main () {
       asm volatile("l.nios_rrr %[out1],%[in1],%[in2], 20" : [out1] "=r"(ret) : [in1] "r"(0x3 << 9), [in2] "r"((uint32_t) &((uint32_t *)&grayscale[0])[i*128]));
       //printf("transferring to bus address grayscale: %d\n", (uint32_t) &((uint32_t *)grayscale)[i*128]);
       // memory address 
-      asm volatile("l.nios_rrr %[out1],%[in1],%[in2], 20" : [out1] "=r"(ret) : [in1] "r"(0x5 << 9), [in2] "r"((i&0x1) * 256));
+      asm volatile("l.nios_rrr %[out1],%[in1],%[in2], 20" : [out1] "=r"(ret) : [in1] "r"(0x5 << 9), [in2] "r"(z));
       // block size 128
       asm volatile("l.nios_rrr %[out1],%[in1],%[in2], 20" : [out1] "=r"(ret) : [in1] "r"(0x7 << 9), [in2] "r"(128));
       // start dma

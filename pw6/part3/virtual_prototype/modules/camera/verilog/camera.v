@@ -162,35 +162,34 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
    * Here the grabber is defined
    *
    */
-  reg [7:0] s_byte3Reg, s_byte2Reg, s_byte1Reg, s_byte4Reg, s_byte5Reg, s_byte6Reg, s_byte7Reg;
+  reg [7:0] s_byte1Reg, s_byte2Reg, s_byte3Reg, s_byte4Reg, s_byte5Reg, s_byte6Reg, s_byte7Reg;
   reg [8:0] s_busSelectReg;
-  wire [31:0] s_busPixelWord;
-  wire [63:0] s_pixelDoubleWord = {s_byte1Reg, camData, s_byte3Reg, s_byte2Reg, s_byte5Reg, s_byte4Reg, s_byte7Reg, s_byte6Reg};
+  wire [31:0] s_busPixelWord, s_grayscalePixelWord;
+  wire [63:0] s_pixelDWord = {s_byte7Reg,camData,
+                              s_byte5Reg,s_byte6Reg,
+                              s_byte3Reg,s_byte4Reg,
+                              s_byte1Reg,s_byte2Reg};
   wire s_weLineBuffer = (s_pixelCountReg[2:0] == 3'b111) ? hsync : 1'b0;
-  
+
   always @(posedge pclk)
     begin
-      s_byte7Reg <= (s_pixelCountReg[2:0] == 3'b000 && hsync == 1'b1) ? camData : s_byte7Reg;
-      s_byte6Reg <= (s_pixelCountReg[2:0] == 3'b001 && hsync == 1'b1) ? camData : s_byte6Reg;
-      s_byte5Reg <= (s_pixelCountReg[2:0] == 3'b010 && hsync == 1'b1) ? camData : s_byte5Reg;
-
+      s_byte1Reg <= (s_pixelCountReg[2:0] == 3'b000 && hsync == 1'b1) ? camData : s_byte1Reg;
+      s_byte2Reg <= (s_pixelCountReg[2:0] == 3'b001 && hsync == 1'b1) ? camData : s_byte2Reg;
+      s_byte3Reg <= (s_pixelCountReg[2:0] == 3'b010 && hsync == 1'b1) ? camData : s_byte3Reg;
       s_byte4Reg <= (s_pixelCountReg[2:0] == 3'b011 && hsync == 1'b1) ? camData : s_byte4Reg;
-      s_byte3Reg <= (s_pixelCountReg[2:0] == 3'b100 && hsync == 1'b1) ? camData : s_byte3Reg;
-      s_byte2Reg <= (s_pixelCountReg[2:0] == 3'b101 && hsync == 1'b1) ? camData : s_byte2Reg;
-      s_byte1Reg <= (s_pixelCountReg[2:0] == 3'b110 && hsync == 1'b1) ? camData : s_byte1Reg;
+      
+      s_byte5Reg <= (s_pixelCountReg[2:0] == 3'b100 && hsync == 1'b1) ? camData : s_byte1Reg;
+      s_byte6Reg <= (s_pixelCountReg[2:0] == 3'b101 && hsync == 1'b1) ? camData : s_byte2Reg;
+      s_byte7Reg <= (s_pixelCountReg[2:0] == 3'b110 && hsync == 1'b1) ? camData : s_byte3Reg;
     end
-
-  //modification to support GRAYSCALE
-
-  wire[31:0] s_grayscalePixelWord;
-
-  rgb565Grayscale pixel1 ( .rgb565(s_pixelDoubleWord[63:48]),
+                           
+  rgb565Grayscale pixel1 ( .rgb565(s_pixelDWord[63:48]),
                            .grayscale(s_grayscalePixelWord[31:24]));
-  rgb565Grayscale pixel2 ( .rgb565(s_pixelDoubleWord[47:32]),
+  rgb565Grayscale pixel2 ( .rgb565(s_pixelDWord[47:32]),
                            .grayscale(s_grayscalePixelWord[23:16]));
-  rgb565Grayscale pixel3 ( .rgb565(s_pixelDoubleWord[31:16]),
+  rgb565Grayscale pixel3 ( .rgb565(s_pixelDWord[31:16]),
                            .grayscale(s_grayscalePixelWord[15:8]));
-  rgb565Grayscale pixel4 ( .rgb565(s_pixelDoubleWord[15:0]),
+  rgb565Grayscale pixel4 ( .rgb565(s_pixelDWord[15:0]),
                            .grayscale(s_grayscalePixelWord[7:0]));
 
   dualPortRam2k lineBuffer ( .address1(s_pixelCountReg[10:3]),
@@ -204,7 +203,7 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
   /*
    *
    * Here the bus interface is defined
-   * sand 
+   *
    */
   reg [31:0] s_busAddressReg, s_addressDataOutReg;
   reg [8:0] s_nrOfPixelsPerLineReg;
@@ -212,7 +211,6 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
   reg s_dataValidReg;
   reg [8:0] s_burstCountReg;
   reg  s_grabberRunningReg;
-
   wire s_newScreen, s_newLine;
   wire s_doWrite = ((s_stateMachineReg == DO_BURST1) && s_burstCountReg[8] == 1'b0) ? ~busyIn : 1'b0;
   wire [31:0] s_busAddressNext = (reset == 1'b1 || s_newScreen == 1'b1) ? s_frameBufferBaseReg : 
