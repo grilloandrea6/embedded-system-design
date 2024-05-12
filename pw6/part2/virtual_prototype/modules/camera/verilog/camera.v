@@ -176,18 +176,7 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
     end
   
 
-// Va bene fargli fare tutto in modo asincrono?
-//rgb565GrayscaleIse #(.customInstructionId(1'b0)) grayscale_converter
-//                            (.start(1'b1),
-//                             .valueA(s_pixelWord),
-//                             .valueB(32'b0),
-//                             .iseId(1'b0),
-//                             .result(s_grayscalePixelWord) );
   wire [7:0] gray1, gray2;
-  // rgb565Grayscale pixel1 ( .rgb565({s_pixelWord[7:0],s_pixelWord[15:8]}),
-  //                          .grayscale(gray1));
-  // rgb565Grayscale pixel2 ( .rgb565({s_pixelWord[23:16],s_pixelWord[31:24]}),
-  //                          .grayscale(gray2));  
                            
 rgb565Grayscale pixel1 ( .rgb565(s_pixelWord[15:0]),
                            .grayscale(gray1));
