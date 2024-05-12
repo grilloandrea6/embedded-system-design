@@ -175,12 +175,24 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
       s_byte1Reg <= (s_pixelCountReg[1:0] == 2'b10 && hsync == 1'b1) ? camData : s_byte1Reg;
     end
   
+
+wire [7:0] pixel1, pixel2;
+            
+thresholdChecker px1 ( .rgb565(s_pixelWord[15:0]),
+                           .thresholdedPixel(pixel1));
+thresholdChecker px2 ( .rgb565(s_pixelWord[31:16]),
+                           .thresholdedPixel(pixel2));
+  
+
+  assign s_thresholdedPixels = {pixel2, pixel1};
+
+
   dualPortRam2k lineBuffer ( .address1(s_pixelCountReg[10:2]),
                              .address2(s_busSelectReg),
                              .clock1(pclk),
                              .clock2(clock),
                              .writeEnable(s_weLineBuffer),
-                             .dataIn1(s_pixelWord),
+                             .dataIn1(s_thresholdedPixels),
                              .dataOut2(s_busPixelWord));
 
   /*
