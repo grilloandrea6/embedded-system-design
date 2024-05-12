@@ -164,11 +164,8 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
    */
   reg [7:0] s_byte1Reg, s_byte2Reg, s_byte3Reg, s_byte4Reg, s_byte5Reg, s_byte6Reg, s_byte7Reg;
   reg [8:0] s_busSelectReg;
-  wire [31:0] s_busPixelWord, s_grayscalePixelWord;
-  wire [63:0] s_pixelDWord = {s_byte7Reg,camData,
-                              s_byte5Reg,s_byte6Reg,
-                              s_byte3Reg,s_byte4Reg,
-                              s_byte1Reg,s_byte2Reg};
+  wire [7:0] gray1, gray2, gray3, gray4;
+  wire [31:0] s_busPixelWord, s_grayscalePixelWord = {gray1, gray2, gray3, gray4};
   wire s_weLineBuffer = (s_pixelCountReg[2:0] == 3'b111) ? hsync : 1'b0;
 
   always @(posedge pclk)
@@ -183,14 +180,15 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
       s_byte7Reg <= (s_pixelCountReg[2:0] == 3'b110 && hsync == 1'b1) ? camData : s_byte3Reg;
     end
                            
-  rgb565Grayscale pixel1 ( .rgb565(s_pixelDWord[63:48]),
-                           .grayscale(s_grayscalePixelWord[31:24]));
-  rgb565Grayscale pixel2 ( .rgb565(s_pixelDWord[47:32]),
-                           .grayscale(s_grayscalePixelWord[23:16]));
-  rgb565Grayscale pixel3 ( .rgb565(s_pixelDWord[31:16]),
-                           .grayscale(s_grayscalePixelWord[15:8]));
-  rgb565Grayscale pixel4 ( .rgb565(s_pixelDWord[15:0]),
-                           .grayscale(s_grayscalePixelWord[7:0]));
+  rgb565Grayscale pixel1 ( .rgb565({s_byte7Reg, camData}),
+                           .grayscale(gray1));
+  rgb565Grayscale pixel2 ( .rgb565({s_byte5Reg, s_byte6Reg}),
+                           .grayscale(gray2));
+  rgb565Grayscale pixel3 ( .rgb565({s_byte3Reg, s_byte4Reg}),
+                           .grayscale(gray3));
+  rgb565Grayscale pixel4 ( .rgb565({s_byte1Reg, s_byte2Reg}),
+                           .grayscale(gray4));
+
 
   dualPortRam2k lineBuffer ( .address1(s_pixelCountReg[10:3]),
                              .address2(s_busSelectReg),
