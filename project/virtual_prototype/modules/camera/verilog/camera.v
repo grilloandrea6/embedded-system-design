@@ -176,15 +176,15 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
     end
   
 
-  wire [15:0] pixel1, pixel2;
+  // wire [15:0] pixel1, pixel2;
             
-  thresholdChecker px1 ( .rgb565(s_pixelWord[15:0]),
-                            .thresholdedPixel(pixel1));
-  thresholdChecker px2 ( .rgb565(s_pixelWord[31:16]),
-                            .thresholdedPixel(pixel2));
+  // thresholdChecker px1 ( .rgb565(s_pixelWord[15:0]),
+  //                           .thresholdedPixel(pixel1));
+  // thresholdChecker px2 ( .rgb565(s_pixelWord[31:16]),
+  //                           .thresholdedPixel(pixel2));
     
 
-  wire [31:0] s_thresholdedPixels = {pixel2, pixel1};
+  // wire [31:0] s_thresholdedPixels = {pixel2, pixel1};
 
 
   dualPortRam2k lineBuffer ( .address1(s_pixelCountReg[10:2]),
@@ -192,7 +192,8 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
                              .clock1(pclk),
                              .clock2(clock),
                              .writeEnable(s_weLineBuffer),
-                             .dataIn1(s_thresholdedPixels),
+                             //.dataIn1(s_thresholdedPixels),
+                             .dataIn1(s_pixelWord),
                              .dataOut2(s_busPixelWord));
 
   /*
