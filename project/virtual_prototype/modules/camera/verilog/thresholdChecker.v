@@ -12,6 +12,6 @@ module thresholdChecker (
  */
 
 // red-green-blue conditions get checked
-assign thresholdedPixel = (rgb565[15:11]==2'b11 && rgb565[10:5]==2'b00 && rgb565[4:0]==2'b11) ? 16'c : rgb565; // 16'h0000;
+assign thresholdedPixel = (rgb565[15:11]==2'b11 && rgb565[10:5]==2'b00 && rgb565[4:0]==2'b11) ? 16'hFFFFF : rgb565; // 16'h0000;
 
 endmodule
