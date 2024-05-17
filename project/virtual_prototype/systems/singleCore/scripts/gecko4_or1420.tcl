@@ -155,3 +155,8 @@ set_location_assignment PIN_R7 -to sevenSegments[21]
 set_location_assignment PIN_T4 -to sevenSegments[22]
 set_location_assignment PIN_T8 -to sevenSegments[23]
 
+
+set_location_assignment PIN_F2 -to pwmPins[0]
+set_location_assignment PIN_E3 -to pwmPins[1]
+
+
