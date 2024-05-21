@@ -21,31 +21,21 @@ module pwm_generator #(  parameter [7:0] customId = 8'h00 )
     wire s_isMyCust = (ciN == customId) ? start : 1'b0;
     assign done = s_isMyCust;
 
-    reg [1:0] pwmActivated;
+    reg [1:0] pwmActivated = 0;
 
     // We want to generate PWM at 50Hz (from motor datasheet)
     // The system clock should be 72MHz
     // Which means that we need to count 1.440.000 cycles to get 50Hz
     // With a 20bits counter we can count up to 1.048.576, which seems like a good compromise
     // This way we never reset the counter
-    reg [19:0] counterFreq;
+    reg [19:0] counterFreq = 0;
     
-    reg [31:0] counterDuty_1 = 0;
-    reg [31:0] counterDuty_2 = 0;
-    reg [31:0] duty_1, duty_2;
+    reg [31:0] duty_1 = 0 , duty_2 = 0;
     
-    assign pwmPins[0] = (pwmActivated[0] && counterDuty_1) ? 1'b1 : 1'b0;
-    assign pwmPins[1] = (pwmActivated[1] && counterDuty_2) ? 1'b1 : 1'b0;
-
-    // always @(posedge reset) begin
-    //     counterFreq <= 0;
-    //     duty_1 <= 0;
-    //     duty_2 <= 0;
-    //     pwmActivated <= 0;
-    // end
+    assign pwmPins[0] = (pwmActivated[0] && counterFreq < duty_1) ? 1'b1 : 1'b0;
+    assign pwmPins[1] = (pwmActivated[1] && counterFreq < duty_2) ? 1'b1 : 1'b0;
 
     always @(posedge clock) begin
-        
         if (s_isMyCust) begin
             pwmActivated <= valueA[1:0];
             duty_1 <= valueA[3:2] == 2'b01 ? valueB : duty_1;
@@ -53,20 +43,6 @@ module pwm_generator #(  parameter [7:0] customId = 8'h00 )
         end
 
         counterFreq <= counterFreq + 1'b1; 
-
-        if (counterFreq == 31'b0) begin
-            counterDuty_1 <= duty_1;
-            counterDuty_2 <= duty_2;
-        end
-        else begin 
-            if (counterDuty_1 != 0) begin
-                counterDuty_1 <= counterDuty_1 - 1'b1;
-            end
-            if (counterDuty_2 != 0) begin
-                counterDuty_2 <= counterDuty_2 - 1'b1;
-            end
-        end
-        
     end
 
 endmodule
