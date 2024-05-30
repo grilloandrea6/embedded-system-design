@@ -1,9 +1,9 @@
 module pwm_generator #(  parameter [7:0] customId = 8'h00 )
              (  input  wire         start,
                                     clock,
-                                    reset,
-                input  wire [31:0]  valueA,
-                                    valueB,
+                                    reset,  // ToDo use it -> 
+                input  wire [31:0]  valueA, //ToDo just 4 bits and change it in the top module
+                                    valueB, // ToDo just 20 bits and change it in the top module
                 input  wire  [7:0]  ciN,
                 output wire  [1:0]  pwmPins,
                 output wire         done
@@ -30,7 +30,7 @@ module pwm_generator #(  parameter [7:0] customId = 8'h00 )
     // This way we never reset the counter
     reg [19:0] counterFreq = 0;
     
-    reg [31:0] duty_1 = 0 , duty_2 = 0;
+    reg [31:0] duty_1 = 0 , duty_2 = 0; // ToDo make those register smaller
     
     assign pwmPins[0] = (pwmActivated[0] && counterFreq < duty_1) ? 1'b1 : 1'b0;
     assign pwmPins[1] = (pwmActivated[1] && counterFreq < duty_2) ? 1'b1 : 1'b0;
