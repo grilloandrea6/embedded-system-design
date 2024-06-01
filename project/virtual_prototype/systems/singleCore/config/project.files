@@ -24,6 +24,7 @@
 ../../../modules/ramDmaCi/verilog/ramDmaCi.v
 ../../../modules/camera/verilog/camera.v
 ../../../modules/camera/verilog/thresholdChecker.v
+../../../modules/camera/verilog/processPixel.v
 ../../../modules/camera/verilog/maskMemory.v
 ../../../modules/delay/verilog/delayIse.v
 ../../../modules/swapbyteIse/verilog/swapByteIse.v

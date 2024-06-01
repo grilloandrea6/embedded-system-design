@@ -177,7 +177,7 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
   wire s_weMaskMemory = (s_pixelCountReg[5:0] == 6'b111111) ? hsync : 1'b0;
   wire [15:0]  s_pixel1, s_pixel2;
   wire [31:0] s_busPixelWord;
-  wire [31:0] s_rgb565Grayscale = {s_pixel2, s_pixel1}; // ToDo da fare dentro il thresholder {s_pixel2[7:3],s_pixel2[7:2],s_pixel2[7:3],s_pixel1[7:3],s_pixel1[7:2],s_pixel1[7:3]};
+  wire [31:0] s_rgb565Grayscale = {s_pixel2, s_pixel1};
   wire s_weLineBuffer = (s_pixelCountReg[1:0] == 2'b11) ? hsync : 1'b0;
 
 // ToDo define memory right size
@@ -191,17 +191,12 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
 
 
 
-  //thresholdChecker gray1 ( .rgb565({s_byte3Reg,s_byte2Reg}),
-  //                        .outputPixel(s_pixel1),
-  //                        .outputMask(outputMask1) );
-  //thresholdChecker gray2 ( .rgb565({s_byte1Reg,camData}),
-  //                        .outputPixel(s_pixel2),
-  //                        .outputMask(outputMask2) );
-  //ToDo togli sta cosa coglione
-  assign outputMask1 = 0;
-  assign outputMask2 = 0;
-  assign s_pixel1 = {s_byte3Reg,s_byte2Reg};
-  assign s_pixel2 = {s_byte1Reg,camData};
+  processPixel pixel1 ( .rgb565({s_byte3Reg,s_byte2Reg}),
+                        .processedPixel(s_pixel1),
+                        .outputMask(outputMask1) );
+  processPixel pixel2 ( .rgb565({s_byte1Reg,camData}),
+                        .processedPixel(s_pixel2),
+                        .outputMask(outputMask2) );
 
   always @(posedge pclk)
     begin
