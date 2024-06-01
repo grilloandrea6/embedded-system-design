@@ -38,7 +38,8 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
    *     4        Read frame buffer address
    *     5        Write frame buffer address (ciValueB)
    *     6        Take single image (ciValueb[1..0] = "10")
-   *     6        Start mask buffer transfer (ciValueb[1..0] = "01")
+   *     6        Start/stop image aquisition (ciValueb[1..0] = "01")
+   *     6        Start mask buffer transfer (ciValueb[1..0] = "11")
    *     7        Read (self clearing): Single image grabbing / mask transfer done.
    *     8        Read mask buffer address
    *     9        Write mask buffer address (ciValueB)
@@ -97,7 +98,7 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
       s_grabberSingleShotReg <= (reset == 1'b1 || s_singleShotActionReg[0] == 1'b1) ? 1'b0 : (s_isMyCi == 1'b1 && ciValueA[3:0] == 4'd6) ? ciValueB[1]& ~ciValueB[0] : s_grabberSingleShotReg;
       
       s_maskBufferBaseReg    <= (reset == 1'b1) ? 32'd0 : (s_isMyCi == 1'b1 && ciValueA[3:0] == 4'd9) ? {ciValueB[31:2],2'd0} : s_maskBufferBaseReg;
-      s_maskTransferReg      <= (reset == 1'b1) ? 1'b0 : (s_isMyCi == 1'b1 && ciValueA[3:0] == 4'd6) ? ~ciValueB[1] & ciValueB[0] : s_maskTransferReg;
+      s_maskTransferReg      <= (reset == 1'b1) ? 1'b0 : (s_isMyCi == 1'b1 && ciValueA[3:0] == 4'd6) ? ciValueB[1] & ciValueB[0] : s_maskTransferReg;
       // TODO mask transfer reg reset at the end? oppure anche subito
     end
   
