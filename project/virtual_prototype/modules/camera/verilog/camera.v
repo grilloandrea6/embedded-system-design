@@ -40,7 +40,7 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
    *     6        Take single image (ciValueb[1..0] = "10")
    *     6        Start/stop image aquisition (ciValueb[1..0] = "01")
    *     7        Read (self clearing): Single image grabbing done.
-    bit 20 è una read dalla memoria average
+   *     8        Read memory of averaging
    */
   function integer clog2;
     input integer value;
@@ -63,7 +63,7 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
   reg s_singleShotDoneReg;
   
   wire s_isMyCi = (ciN == customInstructionId) ? ciStart & ciCke : 1'b0;
-  wire s_isMemoryRead = s_isMyCi & ciValueA[20];
+  wire s_isMemoryRead = s_isMyCi & ciValueA[4];
   reg s_isMemoryReadReg;
 
   always @(posedge clock) s_isMemoryReadReg = ~reset & s_isMemoryRead;
@@ -148,8 +148,8 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
    */
   reg [31:0] s_selectedResult;
 
-  assign ciDone   = (s_isMyCi & ~ciValueA[20]) | s_isMemoryReadReg;
-  assign ciResult = (s_isMyCi == 1'b1 & ~ciValueA[20] & ~s_isMemoryReadReg) ? s_selectedResult : s_isMemoryReadReg ? (s_avgMemoryOut) : 32'b0;//32'hfffff : 32'd0;
+  assign ciDone   = (s_isMyCi & ~ciValueA[4]) | s_isMemoryReadReg;
+  assign ciResult = (s_isMyCi == 1'b1 & ~ciValueA[4] & ~s_isMemoryReadReg) ? s_selectedResult : s_isMemoryReadReg ? (s_avgMemoryOut) : 32'b0;
 
   always @*
     case (ciValueA[3:0])
@@ -176,35 +176,27 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
   wire [31:0] s_rgb565Grayscale;
   wire [31:0] s_avgMemoryOut;
 
-  // todo ottimizare bit
   reg [31:0] contatoreLinea;
-  reg [9:0]  contatorePixel;
-  reg [17:0] contatoreAverage;
+  reg [9:0]  sum_1Pixels;
+  reg [17:0] sum_idxPixels_line;
 
+  wire [17:0] idx_Pixel= {8'd0, s_pixelCountReg[10:1]};
 
   always @(posedge pclk)
   begin
     contatoreLinea <= (reset == 1'b1 || s_vsyncNegEdge) ? 32'd0 : (s_hsyncNegEdge) ? contatoreLinea + 32'd1 : contatoreLinea;
-    contatorePixel <= (reset == 1'b1 || s_hsyncNegEdge) ? 10'd0 : s_weLineBuffer ? (contatorePixel + {9'd0,outputMask1} + {9'd0, outputMask2}) : contatorePixel;
-
-    contatoreAverage <= (reset == 1'b1 || s_hsyncNegEdge) ? 18'd0 : s_weLineBuffer ? (contatoreAverage + (outputMask1 ? ({8'd0, s_pixelCountReg[10:1]} - 18'd1) : 18'd0) + (outputMask2 ? {8'd0, s_pixelCountReg[10:1]} : 18'd0)) : contatoreAverage; // sum of indexes of pixel on the line
-    // contatori dei pixel
-    // se il pixel è a 1 sommo di uno il contatore dei pixel
-    // e sommo pixelCountReg al contatore average
+    sum_1Pixels <= (reset == 1'b1 || s_hsyncNegEdge) ? 10'd0 : s_weLineBuffer ? (sum_1Pixels + {9'd0,outputMask1} + {9'd0, outputMask2}) : sum_1Pixels;
+    sum_idxPixels_line <= (reset == 1'b1 || s_hsyncNegEdge) ? 18'd0 : s_weLineBuffer ? (sum_idxPixels_line + (outputMask1 ? (idx_Pixel-18'd1) : 18'd0) + (outputMask2 ? idx_Pixel : 18'd0)) : sum_idxPixels_line; // sum of indexes of pixel on the line
   end
 
-  
 
-// ToDo define memory right size
- dualPortRam2k avgBuffer (.address1(contatoreLinea), // ToDo contatore di linea
+ dualPortRam2k avgBuffer (.address1(contatoreLinea),
                         .address2(ciValueB[11:0]),
                         .clock1(pclk),
                         .clock2(clock),
-                        .writeEnable(s_hsyncNegEdge), // ToDo scrivo sul hsyncnegedge
-                        .dataIn1({contatoreAverage, 4'b0101, contatorePixel}), // combinare somma e avg?
+                        .writeEnable(s_hsyncNegEdge),
+                        .dataIn1({sum_idxPixels_line, 4'b0101, sum_1Pixels}),
                         .dataOut2(s_avgMemoryOut)); 
-
-//assign s_avgMemoryOut = 32'd12345;
 
   processPixel pixel1 ( .rgb565({s_byte3Reg,s_byte2Reg}),
                         .processedPixel(s_rgb565Grayscale[15:0]),
