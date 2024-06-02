@@ -43,6 +43,8 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
    *     7        Read (self clearing): Single image grabbing / mask transfer done.
    *     8        Read mask buffer address
    *     9        Write mask buffer address (ciValueB)
+
+    bit 20 è una read dalla memoria mask
    */
   function integer clog2;
     input integer value;
@@ -65,6 +67,11 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
   reg s_singleShotDoneReg;
   
   wire s_isMyCi = (ciN == customInstructionId) ? ciStart & ciCke : 1'b0;
+  wire s_isMemoryRead = s_isMyCi & ciValueA[20];
+  reg s_isMemoryReadReg;
+
+  always @(posedge clock) s_isMemoryReadReg = ~reset & s_isMemoryRead;
+
   /*
    *
    * Here we define the counters for the 1KHz pulse and 1Hz pulse
@@ -149,8 +156,9 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
    */
   reg [31:0] s_selectedResult;
   
-  assign ciDone   = s_isMyCi;
-  assign ciResult = (s_isMyCi == 1'b0) ? 32'd0 : s_selectedResult;
+  assign ciDone   = (s_isMyCi & ~ciValueA[20]) | s_isMemoryReadReg;
+  assign ciResult = (s_isMyCi == 1'b0) ? 32'd0 : 
+                      s_isMemoryReadReg ? s_maskMemoryOut : s_selectedResult;
 
   always @*
     case (ciValueA[3:0])
@@ -180,15 +188,16 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
   wire [31:0] s_busPixelWord;
   wire [31:0] s_rgb565Grayscale = {s_pixel2, s_pixel1};
   wire s_weLineBuffer = (s_pixelCountReg[1:0] == 2'b11) ? hsync : 1'b0;
+  wire [31:0] s_maskMemoryOut;
 
 // ToDo define memory right size
  maskMemory maskBuffer (.address1(s_addressMaskReg), // ToDo have a global counter
-                        .address2(s_busSelectReg),
+                        .address2(ciValueB[13:0]),
                         .clock1(pclk),
                         .clock2(clock),
                         .writeEnable(s_weMaskMemory),
                         .dataIn1({outputMask2, outputMask1, s_mask}),
-                        .dataOut2()); // ToDo
+                        .dataOut2(s_maskMemoryOut)); 
 
 
 
