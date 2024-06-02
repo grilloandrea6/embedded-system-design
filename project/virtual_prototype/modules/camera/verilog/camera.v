@@ -147,15 +147,9 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
    *
    */
   reg [31:0] s_selectedResult;
-  reg [31:0] s_avgMemoryOutReg;
 
-  always @(posedge clock)
-    begin
-      s_avgMemoryOutReg <= s_avgMemoryOut + 32'd3 + ciValueB;
-    end
-  
   assign ciDone   = (s_isMyCi & ~ciValueA[20]) | s_isMemoryReadReg;
-  assign ciResult = (s_isMyCi == 1'b1 & ~ciValueA[20]) ? s_selectedResult : s_isMemoryReadReg ? (s_avgMemoryOutReg) : 32'b0;//32'hfffff : 32'd0;
+  assign ciResult = (s_isMyCi == 1'b1 & ~ciValueA[20] & ~s_isMemoryReadReg) ? s_selectedResult : s_isMemoryReadReg ? (s_avgMemoryOut) : 32'b0;//32'hfffff : 32'd0;
 
   always @*
     case (ciValueA[3:0])
@@ -165,7 +159,7 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
       4'd3    : s_selectedResult <= {24'd0,s_fpsCountValueReg};
       4'd4    : s_selectedResult <= s_frameBufferBaseReg;
       4'd7    : s_selectedResult <= {31'd0,s_singleShotDoneReg};
-      default : s_selectedResult <= 32'd0;
+      default : s_selectedResult <= 32'b0;
     endcase
 
   /*
@@ -181,7 +175,6 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
   wire outputMask1, outputMask2;
   wire [31:0] s_rgb565Grayscale;
   wire [31:0] s_avgMemoryOut;
-  // ToDo wire [9:0] pixelIndex; // max value: 600
 
   // todo ottimizare bit
   reg [31:0] contatoreLinea;
@@ -191,7 +184,7 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
 
   always @(posedge pclk)
   begin
-    contatoreLinea <= (reset == 1'b1 || s_vsyncNegEdge) ? 32'd0 : (s_hsyncNegEdge & s_weLineBuffer) ? contatoreLinea + 32'd1 : contatoreLinea;
+    contatoreLinea <= (reset == 1'b1 || s_vsyncNegEdge) ? 32'd0 : (s_hsyncNegEdge) ? contatoreLinea + 32'd1 : contatoreLinea;
     contatorePixel <= (reset == 1'b1 || s_hsyncNegEdge) ? 10'd0 : s_weLineBuffer ? (contatorePixel + {9'd0,outputMask1} + {9'd0, outputMask2}) : contatorePixel;
 
     contatoreAverage <= (reset == 1'b1 || s_hsyncNegEdge) ? 18'd0 : s_weLineBuffer ? (contatoreAverage + (outputMask1 ? ({8'd0, s_pixelCountReg[10:1]} - 18'd1) : 18'd0) + (outputMask2 ? {8'd0, s_pixelCountReg[10:1]} : 18'd0)) : contatoreAverage;// ToDo eheh questa è divertente
@@ -203,12 +196,12 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
   
 
 // ToDo define memory right size
- dualPortRam2k avgBuffer (.address1(9'b1),//contatoreLinea), // ToDo contatore di linea
+ dualPortRam2k avgBuffer (.address1(contatoreLinea), // ToDo contatore di linea
                         .address2(ciValueB[11:0]),
                         .clock1(pclk),
                         .clock2(clock),
-                        .writeEnable(1'b1),//s_weLineBuffer), //s_hsyncNegEdge), // ToDo scrivo sul hsyncnegedge
-                        .dataIn1(32'd123), //{contatoreAverage, 3'b101, contatorePixel}), // combinare somma e avg?
+                        .writeEnable(s_hsyncNegEdge), // ToDo scrivo sul hsyncnegedge
+                        .dataIn1({contatoreAverage, 4'b0101, contatorePixel}), // combinare somma e avg?
                         .dataOut2(s_avgMemoryOut)); 
 
 //assign s_avgMemoryOut = 32'd12345;
