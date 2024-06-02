@@ -39,12 +39,8 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
    *     5        Write frame buffer address (ciValueB)
    *     6        Take single image (ciValueb[1..0] = "10")
    *     6        Start/stop image aquisition (ciValueb[1..0] = "01")
-   *     6        Start mask buffer transfer (ciValueb[1..0] = "11")
-   *     7        Read (self clearing): Single image grabbing / mask transfer done.
-   *     8        Read mask buffer address
-   *     9        Write mask buffer address (ciValueB)
-
-    bit 20 è una read dalla memoria mask
+   *     7        Read (self clearing): Single image grabbing done.
+    bit 20 è una read dalla memoria average
    */
   function integer clog2;
     input integer value;
@@ -95,18 +91,14 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
    * Here we define the frame buffer parameters
    *
    */
-  reg[31:0] s_frameBufferBaseReg, s_maskBufferBaseReg;
-  reg s_grabberActiveReg,s_grabberSingleShotReg, s_maskTransferReg;
+  reg[31:0] s_frameBufferBaseReg;
+  reg s_grabberActiveReg,s_grabberSingleShotReg;
 
   always @(posedge clock)
     begin
       s_frameBufferBaseReg   <= (reset == 1'b1) ? 32'd0 : (s_isMyCi == 1'b1 && ciValueA[3:0] == 4'd5) ? {ciValueB[31:2],2'd0} : s_frameBufferBaseReg;
       s_grabberActiveReg     <= (reset == 1'b1) ? 1'b0 : (s_isMyCi == 1'b1 && ciValueA[3:0] == 4'd6) ? ciValueB[0]& ~ciValueB[1] : s_grabberActiveReg;
       s_grabberSingleShotReg <= (reset == 1'b1 || s_singleShotActionReg[0] == 1'b1) ? 1'b0 : (s_isMyCi == 1'b1 && ciValueA[3:0] == 4'd6) ? ciValueB[1]& ~ciValueB[0] : s_grabberSingleShotReg;
-      
-      s_maskBufferBaseReg    <= (reset == 1'b1) ? 32'd0 : (s_isMyCi == 1'b1 && ciValueA[3:0] == 4'd9) ? {ciValueB[31:2],2'd0} : s_maskBufferBaseReg;
-      s_maskTransferReg      <= (reset == 1'b1) ? 1'b0 : (s_isMyCi == 1'b1 && ciValueA[3:0] == 4'd6) ? ciValueB[1] & ciValueB[0] : s_maskTransferReg;
-      // TODO mask transfer reg reset at the end? oppure anche subito
     end
   
   /*
@@ -155,10 +147,15 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
    *
    */
   reg [31:0] s_selectedResult;
+  reg [31:0] s_avgMemoryOutReg;
+
+  always @(posedge clock)
+    begin
+      s_avgMemoryOutReg <= s_avgMemoryOut + 32'd3 + ciValueB;
+    end
   
   assign ciDone   = (s_isMyCi & ~ciValueA[20]) | s_isMemoryReadReg;
-  assign ciResult = (s_isMyCi == 1'b0) ? 32'd0 : 
-                      s_isMemoryReadReg ? s_maskMemoryOut : s_selectedResult;
+  assign ciResult = (s_isMyCi == 1'b1 & ~ciValueA[20]) ? s_selectedResult : s_isMemoryReadReg ? (s_avgMemoryOutReg) : 32'b0;//32'hfffff : 32'd0;
 
   always @*
     case (ciValueA[3:0])
@@ -168,7 +165,6 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
       4'd3    : s_selectedResult <= {24'd0,s_fpsCountValueReg};
       4'd4    : s_selectedResult <= s_frameBufferBaseReg;
       4'd7    : s_selectedResult <= {31'd0,s_singleShotDoneReg};
-      4'd8    : s_selectedResult <= s_maskBufferBaseReg;
       default : s_selectedResult <= 32'd0;
     endcase
 
@@ -179,76 +175,51 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
    */
   reg [7:0] s_byte3Reg,s_byte2Reg,s_byte1Reg;
   reg [8:0] s_busSelectReg;
-  wire outputMask1, outputMask2;
-
-  reg [13:0] s_addressMaskReg;
-  reg [29:0] s_mask;
-  wire s_weMaskMemory = (s_pixelCountReg[5:0] == 6'b111111) ? hsync : 1'b0;
-  wire [15:0]  s_pixel1, s_pixel2;
   wire [31:0] s_busPixelWord;
-  wire [31:0] s_rgb565Grayscale = {s_pixel2, s_pixel1};
   wire s_weLineBuffer = (s_pixelCountReg[1:0] == 2'b11) ? hsync : 1'b0;
-  wire [31:0] s_maskMemoryOut;
 
-// ToDo define memory right size
- maskMemory maskBuffer (.address1(s_addressMaskReg), // ToDo have a global counter
-                        .address2(ciValueB[13:0]),
-                        .clock1(pclk),
-                        .clock2(clock),
-                        .writeEnable(s_weMaskMemory),
-                        .dataIn1({outputMask2, outputMask1, s_mask}),
-                        .dataOut2(s_maskMemoryOut)); 
+  wire outputMask1, outputMask2;
+  wire [31:0] s_rgb565Grayscale;
+  wire [31:0] s_avgMemoryOut;
+  // ToDo wire [9:0] pixelIndex; // max value: 600
 
+  // todo ottimizare bit
+  reg [31:0] contatoreLinea;
+  reg [9:0]  contatorePixel;
+  reg [17:0] contatoreAverage;
 
-
-  processPixel pixel1 ( .rgb565({s_byte3Reg,s_byte2Reg}),
-                        .processedPixel(s_pixel1),
-                        .outputMask(outputMask1) );
-  processPixel pixel2 ( .rgb565({s_byte1Reg,camData}),
-                        .processedPixel(s_pixel2),
-                        .outputMask(outputMask2) );
 
   always @(posedge pclk)
-    begin
-      //s_addressMaskReg <= (reset == 1'b1 || s_newScreen == 1'b1) ? 14'd0 : (s_weMaskMemory == 1'b1) ? s_addressMaskReg + 14'd1 : s_addressMaskReg;
-      if(reset == 1'b1 || s_newScreen == 1'b1)
-        s_addressMaskReg <= 14'd0;
-      else if (s_weMaskMemory == 1'b1)
-        s_addressMaskReg = s_addressMaskReg + 14'd1;
+  begin
+    contatoreLinea <= (reset == 1'b1 || s_vsyncNegEdge) ? 32'd0 : (s_hsyncNegEdge & s_weLineBuffer) ? contatoreLinea + 32'd1 : contatoreLinea;
+    contatorePixel <= (reset == 1'b1 || s_hsyncNegEdge) ? 10'd0 : s_weLineBuffer ? (contatorePixel + {9'd0,outputMask1} + {9'd0, outputMask2}) : contatorePixel;
 
-      s_mask[0]  <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b0000)) ? outputMask1 : s_mask[0];
-      s_mask[1]  <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b0000)) ? outputMask2 : s_mask[1];
-      s_mask[2]  <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b0001)) ? outputMask1 : s_mask[2];
-      s_mask[3]  <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b0001)) ? outputMask2 : s_mask[3];
-      s_mask[4]  <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b0010)) ? outputMask1 : s_mask[4];
-      s_mask[5]  <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b0010)) ? outputMask2 : s_mask[5];
-      s_mask[6]  <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b0011)) ? outputMask1 : s_mask[6];
-      s_mask[7]  <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b0011)) ? outputMask2 : s_mask[7];
-      s_mask[8]  <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b0100)) ? outputMask1 : s_mask[8];
-      s_mask[9]  <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b0100)) ? outputMask2 : s_mask[9];
-      s_mask[10] <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b0101)) ? outputMask1 : s_mask[10];
-      s_mask[11] <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b0101)) ? outputMask2 : s_mask[11];
-      s_mask[12] <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b0110)) ? outputMask1 : s_mask[12];
-      s_mask[13] <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b0110)) ? outputMask2 : s_mask[13];
-      s_mask[14] <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b0111)) ? outputMask1 : s_mask[14];
-      s_mask[15] <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b0111)) ? outputMask2 : s_mask[15];
-      s_mask[16] <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b1000)) ? outputMask1 : s_mask[16];
-      s_mask[17] <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b1000)) ? outputMask2 : s_mask[17];
-      s_mask[18] <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b1001)) ? outputMask1 : s_mask[18];
-      s_mask[19] <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b1001)) ? outputMask2 : s_mask[19];
-      s_mask[20] <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b1010)) ? outputMask1 : s_mask[20];
-      s_mask[21] <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b1010)) ? outputMask2 : s_mask[21];
-      s_mask[22] <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b1011)) ? outputMask1 : s_mask[22];
-      s_mask[23] <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b1011)) ? outputMask2 : s_mask[23];
-      s_mask[24] <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b1100)) ? outputMask1 : s_mask[24];
-      s_mask[25] <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b1100)) ? outputMask2 : s_mask[25];
-      s_mask[26] <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b1101)) ? outputMask1 : s_mask[26];
-      s_mask[27] <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b1101)) ? outputMask2 : s_mask[27];
-      s_mask[28] <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b1110)) ? outputMask1 : s_mask[28];
-      s_mask[29] <= (s_weLineBuffer & (s_pixelCountReg[5:2] == 4'b1110)) ? outputMask2 : s_mask[29];
-      //camData s_mask[30] <= (s_weLineBuffer & s_pixelCountReg[5:2] ==?3'b1111) ? outputMask1 : s_mask[30];
-      //        s_mask[31] <= (s_weLineBuffer & s_pixelCountReg[5:2] == 3'b1111) ? outputMask2 : s_mask[31];
-    end
+    contatoreAverage <= (reset == 1'b1 || s_hsyncNegEdge) ? 18'd0 : s_weLineBuffer ? (contatoreAverage + (outputMask1 ? ({8'd0, s_pixelCountReg[10:1]} - 18'd1) : 18'd0) + (outputMask2 ? {8'd0, s_pixelCountReg[10:1]} : 18'd0)) : contatoreAverage;// ToDo eheh questa è divertente
+    // contatori dei pixel
+    // se il pixel è a 1 sommo di uno il contatore dei pixel
+    // e sommo pixelCountReg al contatore average
+  end
+
+  
+
+// ToDo define memory right size
+ dualPortRam2k avgBuffer (.address1(9'b1),//contatoreLinea), // ToDo contatore di linea
+                        .address2(ciValueB[11:0]),
+                        .clock1(pclk),
+                        .clock2(clock),
+                        .writeEnable(1'b1),//s_weLineBuffer), //s_hsyncNegEdge), // ToDo scrivo sul hsyncnegedge
+                        .dataIn1(32'd123), //{contatoreAverage, 3'b101, contatorePixel}), // combinare somma e avg?
+                        .dataOut2(s_avgMemoryOut)); 
+
+//assign s_avgMemoryOut = 32'd12345;
+
+  processPixel pixel1 ( .rgb565({s_byte3Reg,s_byte2Reg}),
+                        .processedPixel(s_rgb565Grayscale[15:0]),
+                        .outputMask(outputMask1) );
+  processPixel pixel2 ( .rgb565({s_byte1Reg,camData}),
+                        .processedPixel(s_rgb565Grayscale[31:16]),
+                        .outputMask(outputMask2) );
+
 
   always @(posedge pclk)
     begin
