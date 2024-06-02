@@ -187,7 +187,7 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
     contatoreLinea <= (reset == 1'b1 || s_vsyncNegEdge) ? 32'd0 : (s_hsyncNegEdge) ? contatoreLinea + 32'd1 : contatoreLinea;
     contatorePixel <= (reset == 1'b1 || s_hsyncNegEdge) ? 10'd0 : s_weLineBuffer ? (contatorePixel + {9'd0,outputMask1} + {9'd0, outputMask2}) : contatorePixel;
 
-    contatoreAverage <= (reset == 1'b1 || s_hsyncNegEdge) ? 18'd0 : s_weLineBuffer ? (contatoreAverage + (outputMask1 ? ({8'd0, s_pixelCountReg[10:1]} - 18'd1) : 18'd0) + (outputMask2 ? {8'd0, s_pixelCountReg[10:1]} : 18'd0)) : contatoreAverage;// ToDo eheh questa è divertente
+    contatoreAverage <= (reset == 1'b1 || s_hsyncNegEdge) ? 18'd0 : s_weLineBuffer ? (contatoreAverage + (outputMask1 ? ({8'd0, s_pixelCountReg[10:1]} - 18'd1) : 18'd0) + (outputMask2 ? {8'd0, s_pixelCountReg[10:1]} : 18'd0)) : contatoreAverage; // sum of indexes of pixel on the line
     // contatori dei pixel
     // se il pixel è a 1 sommo di uno il contatore dei pixel
     // e sommo pixelCountReg al contatore average

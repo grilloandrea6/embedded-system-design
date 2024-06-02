@@ -23,63 +23,43 @@ int main () {
   printf("PCLK (kHz) : %d\n", camParams.pixelClockInkHz );
   printf("FPS        : %d\n", camParams.framesPerSecond );
   uint32_t * rgb = (uint32_t *) &rgb565[0];
-  uint32_t grayPixels;
-  vga[2] = swap_u32(2);
-  vga[3] = swap_u32((uint32_t) &grayscale[0]);
-  //while(1) {
-  for (volatile int cazzo = 0; cazzo < 3; cazzo++) {
-    uint32_t * gray = (uint32_t *) &grayscale[0];
-    // takeSingleImageBlocking((uint32_t) &rgb565[0]);
-    // takeSingleImageBlocking((uint32_t) &rgb565[0]);
-    // takeSingleImageBlocking((uint32_t) &rgb565[0]);
-    // takeSingleImageBlocking((uint32_t) &rgb565[0]);
-    // takeSingleImageBlocking((uint32_t) &rgb565[0]);
-    
-    for (volatile int i = 0; i < 10; i++) {
-      volatile int result;
-      asm volatile ("l.nios_rrc %[out1],%[in1],%[in2],0x7":[out1]"=r"(result):[in1]"r"(0x1 << 20),[in2]"r"(i));
-      
- 
-      printf("reading line %d value %d\n", i, (result));
-    }
+  vga[2] = swap_u32(1);
+  vga[3] = swap_u32((uint32_t) &rgb565[0]);
+
+  while(1) {
+    //asm volatile ("l.nios_rrc r0,%[in1],r0,0x6"::[in1]"r"(2000000)); // wait 2 s
 
     takeSingleImageBlocking((uint32_t) &rgb565[0]);
 
-    printf("TAKEN IMAGE\n\n");
-    volatile int result0, result1, result2, result3, result4, result5, result6, result7, result8, result9, result10;
+    int sum_pixels = 0, sum_index_pixels = 0, sum_lineindex_pixels_per_line = 0;
+    int result, index_pixels_per_line, pixels_per_line;
 
-    asm volatile ("l.nios_rrc %[out1],%[in1],%[in2],0x7":[out1]"=r"(result0):[in1]"r"(0x1 << 20),[in2]"r"(0));
-    asm volatile ("l.nios_rrc %[out1],%[in1],%[in2],0x7":[out1]"=r"(result1):[in1]"r"(0x1 << 20),[in2]"r"(0));
-    asm volatile ("l.nios_rrc %[out1],%[in1],%[in2],0x7":[out1]"=r"(result2):[in1]"r"(0x1 << 20),[in2]"r"(1));
-    asm volatile ("l.nios_rrc %[out1],%[in1],%[in2],0x7":[out1]"=r"(result3):[in1]"r"(0x1 << 20),[in2]"r"(2));
-    asm volatile ("l.nios_rrc %[out1],%[in1],%[in2],0x7":[out1]"=r"(result4):[in1]"r"(0x1 << 20),[in2]"r"(1));
-    asm volatile ("l.nios_rrc %[out1],%[in1],%[in2],0x7":[out1]"=r"(result5):[in1]"r"(0x1 << 20),[in2]"r"(4));
-    asm volatile ("l.nios_rrc %[out1],%[in1],%[in2],0x7":[out1]"=r"(result6):[in1]"r"(0x1 << 20),[in2]"r"(5));
-    asm volatile ("l.nios_rrc %[out1],%[in1],%[in2],0x7":[out1]"=r"(result7):[in1]"r"(0x1 << 20),[in2]"r"(6));
-    asm volatile ("l.nios_rrc %[out1],%[in1],%[in2],0x7":[out1]"=r"(result8):[in1]"r"(0x1 << 20),[in2]"r"(7));
-    asm volatile ("l.nios_rrc %[out1],%[in1],%[in2],0x7":[out1]"=r"(result9):[in1]"r"(0x1 << 20),[in2]"r"(8));
-    asm volatile ("l.nios_rrc %[out1],%[in1],%[in2],0x7":[out1]"=r"(result10):[in1]"r"(0x1 << 20),[in2]"r"(9));
+    for (volatile int i = 0; i < camParams.nrOfLinesPerImage; i++) {
+      asm volatile ("l.nios_rrc %[out1],%[in1],%[in2],0x7":[out1]"=r"(result):[in1]"r"(0x1 << 20),[in2]"r"(i));
+      index_pixels_per_line = result >> 14;
+      pixels_per_line = result & 0x3FF;
+      sum_pixels += pixels_per_line;
+      sum_index_pixels += index_pixels_per_line;
+      sum_lineindex_pixels_per_line += pixels_per_line * i;
+    }
+
+    // sum è il numero di tutti gli 1
+    // sum_index è la somma di tutti quelli di sinistra
+    // sum_pixel è la somma di dx * i
     
-    printf("reading line 0 value %d\n", (result0));
-    printf("reading line 0 value %d\n", (result1));
-    printf("reading line 1 value %d\n", (result2));
-    printf("reading line 2 value %d\n", (result3));
-    printf("reading line 1 value %d\n", (result4));
-    printf("reading line 4 value %d\n", (result5));
-    printf("reading line 5 value %d\n", (result6));
-    printf("reading line 6 value %d\n", (result7));
-    printf("reading line 7 value %d\n", (result8));
-    printf("reading line 8 value %d\n", (result9));
-    printf("reading line 9 value %d\n", (result10));
 
+    if(sum_pixels > 100){
+      int avg_line  = sum_index_pixels / sum_pixels;
+      int avg_pixel = sum_lineindex_pixels_per_line / sum_pixels;
 
+      for(int i = avg_line - 3; i < avg_line + 3; i++){
+       for(int j = avg_pixel - 3; j < avg_pixel + 3; j++){
+          rgb565[j*camParams.nrOfPixelsPerLine+i] = 0xFFFF;
+        }
+      }
+      //printf("avg line %d avg pixel %d\n", avg_line, avg_pixel);
+    } else printf("not detected\n");
+    
 
-    // for (volatile int i = 0; i < 10; i++) {
-    //   volatile int result;
-    //   asm volatile ("l.nios_rrc %[out1],%[in1],%[in2],0x7":[out1]"=r"(result):[in1]"r"(0x1 << 20),[in2]"r"(i));
-      
- 
-    //   printf("reading line %d value %d\n", i, (result));
-    // }
   }
 }
