@@ -36,8 +36,8 @@ int main () {
 
     for (volatile int i = 0; i < camParams.nrOfLinesPerImage; i++) {
       asm volatile ("l.nios_rrc %[out1],%[in1],%[in2],0x7":[out1]"=r"(result):[in1]"r"(16),[in2]"r"(i));
-      index_pixels_per_line = result >> 14;
-      pixels_per_line = result & 0x3FF;
+      index_pixels_per_line = result >> 12;
+      pixels_per_line = result & 0xFFF;
       sum_pixels += pixels_per_line;
       sum_index_pixels += index_pixels_per_line;
       sum_lineindex_pixels_per_line += pixels_per_line * i;

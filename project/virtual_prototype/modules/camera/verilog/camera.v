@@ -177,16 +177,16 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
   wire [31:0] s_avgMemoryOut;
 
   reg [31:0] contatoreLinea;
-  reg [9:0]  sum_1Pixels;
-  reg [17:0] sum_idxPixels_line;
+  reg [11:0]  sum_1Pixels;
+  reg [19:0] sum_idxPixels_line;
 
-  wire [17:0] idx_Pixel= {8'd0, s_pixelCountReg[10:1]};
+  wire [19:0] idx_Pixel= {10'd0, s_pixelCountReg[10:1]};
 
   always @(posedge pclk)
   begin
     contatoreLinea <= (reset == 1'b1 || s_vsyncNegEdge) ? 32'd0 : (s_hsyncNegEdge) ? contatoreLinea + 32'd1 : contatoreLinea;
-    sum_1Pixels <= (reset == 1'b1 || s_hsyncNegEdge) ? 10'd0 : s_weLineBuffer ? (sum_1Pixels + {9'd0,outputMask1} + {9'd0, outputMask2}) : sum_1Pixels;
-    sum_idxPixels_line <= (reset == 1'b1 || s_hsyncNegEdge) ? 18'd0 : s_weLineBuffer ? (sum_idxPixels_line + (outputMask1 ? (idx_Pixel-18'd1) : 18'd0) + (outputMask2 ? idx_Pixel : 18'd0)) : sum_idxPixels_line; // sum of indexes of pixel on the line
+    sum_1Pixels <= (reset == 1'b1 || s_hsyncNegEdge) ? 12'd0 : s_weLineBuffer ? (sum_1Pixels + {11'd0,outputMask1} + {11'd0, outputMask2}) : sum_1Pixels;
+    sum_idxPixels_line <= (reset == 1'b1 || s_hsyncNegEdge) ? 20'd0 : s_weLineBuffer ? (sum_idxPixels_line + (outputMask1 ? (idx_Pixel-20'd1) : 20'd0) + (outputMask2 ? idx_Pixel : 20'd0)) : sum_idxPixels_line; // sum of indexes of pixel on the line
   end
 
 
@@ -195,7 +195,7 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
                         .clock1(pclk),
                         .clock2(clock),
                         .writeEnable(s_hsyncNegEdge),
-                        .dataIn1({sum_idxPixels_line, 4'b0101, sum_1Pixels}),
+                        .dataIn1({sum_idxPixels_line, sum_1Pixels}),
                         .dataOut2(s_avgMemoryOut)); 
 
   processPixel pixel1 ( .rgb565({s_byte3Reg,s_byte2Reg}),
