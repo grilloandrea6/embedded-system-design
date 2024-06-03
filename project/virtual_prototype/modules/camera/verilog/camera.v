@@ -176,7 +176,6 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
   wire [31:0] s_rgb565Grayscale;
   wire [31:0] s_avgMemoryOut;
 
-  reg [31:0] contatoreLinea;
   reg [11:0]  sum_1Pixels;
   reg [19:0] sum_idxPixels_line;
 
@@ -184,13 +183,12 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
 
   always @(posedge pclk)
   begin
-    contatoreLinea <= (reset == 1'b1 || s_vsyncNegEdge) ? 32'd0 : (s_hsyncNegEdge) ? contatoreLinea + 32'd1 : contatoreLinea;
     sum_1Pixels <= (reset == 1'b1 || s_hsyncNegEdge) ? 12'd0 : s_weLineBuffer ? (sum_1Pixels + {11'd0,outputMask1} + {11'd0, outputMask2}) : sum_1Pixels;
     sum_idxPixels_line <= (reset == 1'b1 || s_hsyncNegEdge) ? 20'd0 : s_weLineBuffer ? (sum_idxPixels_line + (outputMask1 ? (idx_Pixel-20'd1) : 20'd0) + (outputMask2 ? idx_Pixel : 20'd0)) : sum_idxPixels_line; // sum of indexes of pixel on the line
   end
 
 
- dualPortRam2k avgBuffer (.address1(contatoreLinea),
+ dualPortRam2k avgBuffer (.address1(s_lineCountReg),
                         .address2(ciValueB[11:0]),
                         .clock1(pclk),
                         .clock2(clock),
