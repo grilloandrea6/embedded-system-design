@@ -2,13 +2,16 @@ module pwm_generator #(  parameter [7:0] customId = 8'h00 )
              (  input  wire         start,
                                     clock,
                                     reset,  // ToDo use it -> 
-                input  wire [31:0]  valueA, //ToDo just 4 bits and change it in the top module
-                                    valueB, // ToDo just 20 bits and change it in the top module
+                input  wire [31:0]  valueA,
+                                    valueB,
                 input  wire  [7:0]  ciN,
                 output wire  [1:0]  pwmPins,
                 output wire         done
               );
 
+    // Valua A: bit 0 and 1 activate pwm 1 and 2
+    //          bit 2 and 3 are used to select which duty cycle to write (valueB)
+    
     // VALUE A
     // first 2 bits are directly written to the pwmactivated pins
     // 3rd bit
@@ -30,18 +33,24 @@ module pwm_generator #(  parameter [7:0] customId = 8'h00 )
     // This way we never reset the counter
     reg [19:0] counterFreq = 0;
     
-    reg [31:0] duty_1 = 0 , duty_2 = 0; // ToDo make those register smaller
+    reg [19:0] duty_1 = 0 , duty_2 = 0;
     
     assign pwmPins[0] = (pwmActivated[0] && counterFreq < duty_1) ? 1'b1 : 1'b0;
     assign pwmPins[1] = (pwmActivated[1] && counterFreq < duty_2) ? 1'b1 : 1'b0;
 
     always @(posedge clock) begin
-        if (s_isMyCust) begin
-            pwmActivated <= valueA[1:0];
-            duty_1 <= valueA[3:2] == 2'b01 ? valueB : duty_1;
-            duty_2 <= valueA[3:2] == 2'b10 ? valueB : duty_2;
+        if (reset) begin
+            counterFreq <= 0;
+            pwmActivated <= 0;
+            duty_1 <= 0;
+            duty_2 <= 0;
+        end else begin
+            if (s_isMyCust) begin
+                pwmActivated <= valueA[1:0];
+                duty_1 <= valueA[3:2] == 2'b01 ? valueB : duty_1;
+                duty_2 <= valueA[3:2] == 2'b10 ? valueB : duty_2;
+            end
         end
-
         counterFreq <= counterFreq + 1'b1; 
     end
 
