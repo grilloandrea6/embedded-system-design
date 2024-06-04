@@ -20,7 +20,6 @@
 
 int main () {
   volatile uint16_t rgb565[640*480];
-  volatile uint8_t grayscale[640*480];
   volatile uint32_t result, cycles,stall,idle;
   uint32_t pwm_x = MIDDLE, pwm_y = MIDDLE;
   volatile unsigned int *vga = (unsigned int *) 0X50000020;
@@ -42,7 +41,6 @@ int main () {
   vga[1] = swap_u32(result);
   printf("PCLK (kHz) : %d\n", camParams.pixelClockInkHz );
   printf("FPS        : %d\n", camParams.framesPerSecond );
-  uint32_t * rgb = (uint32_t *) &rgb565[0];
   vga[2] = swap_u32(1);
   vga[3] = swap_u32((uint32_t) &rgb565[0]);
 
