@@ -4,8 +4,14 @@
 #include <vga.h>
 
 int main () {
+  const int lowerRed = 60;
+  const int upperRed = 100;
+  const int lowerGreen = 0;
+  const int upperGreen = 40;
+  const int lowerBlue = 20;
+  const int upperBlue = 60;
+
   volatile uint16_t rgb565[640*480];
-  volatile uint8_t grayscale[640*480];
   volatile uint32_t result, cycles,stall,idle;
   volatile unsigned int *vga = (unsigned int *) 0X50000020;
   camParameters camParams;
@@ -23,32 +29,23 @@ int main () {
   printf("PCLK (kHz) : %d\n", camParams.pixelClockInkHz );
   printf("FPS        : %d\n", camParams.framesPerSecond );
   uint32_t * rgb = (uint32_t *) &rgb565[0];
-  uint32_t grayPixels;
-  vga[2] = swap_u32(2);
-  vga[3] = swap_u32((uint32_t) &grayscale[0]);
+  vga[2] = swap_u32(1);
+  vga[3] = swap_u32((uint32_t) &rgb565[0]);
   while(1) {
-    uint32_t * gray = (uint32_t *) &grayscale[0];
     takeSingleImageBlocking((uint32_t) &rgb565[0]);
+
+    // Start profiling counters
+    asm volatile ("l.nios_rrr r0,r0,%[in2],0xC"::[in2]"r"(7));
+
     int sum_line = 0, sum_pixel = 0, sum = 0;
+    
     for (int line = 0; line < camParams.nrOfLinesPerImage; line++) {
       for (int pixel = 0; pixel < camParams.nrOfPixelsPerLine; pixel++) {
         uint16_t rgb = swap_u16(rgb565[line*camParams.nrOfPixelsPerLine+pixel]);
-
-        
+    
         uint8_t red1 = ((rgb >> 11) & 0x1F) << 3;
         uint8_t green1 = ((rgb >> 5) & 0x3F) << 2;
         uint8_t blue1 = (rgb & 0x1F) << 3;
-
-        uint32_t gray = ((red1*54+green1*183+blue1*19) >> 8)&0xFF;
-
-        int lowerRed = 60;
-        int upperRed = 100;
-        
-        int lowerGreen = 0;
-        int upperGreen = 40;
-
-        int lowerBlue = 20;
-        int upperBlue = 60;
 
         if(lowerRed < red1 && red1 < upperRed  &&
             lowerGreen < green1 && green1 < upperGreen &&
@@ -56,9 +53,11 @@ int main () {
           sum++;
           sum_line += line;
           sum_pixel += pixel;
+        } else {
+          uint8_t gray = ((red1*54+green1*183+blue1*19) >> 8) & 0xFF;
+          uint16_t gray16 = (gray & 0xF8) << 8 | (gray & 0xFC) << 3 | (gray & 0xF8) >> 3;
+          rgb565[line*camParams.nrOfPixelsPerLine+pixel] = swap_u16(gray16);
         }
-        
-        grayscale[line*camParams.nrOfPixelsPerLine+pixel] = gray;
       }
     }
 
@@ -67,10 +66,15 @@ int main () {
       int avg_pixel = sum_pixel/sum;
       for(int i = avg_line - 3; i < avg_line + 3; i++){
        for(int j = avg_pixel - 3; j < avg_pixel + 3; j++){
-          grayscale[i*camParams.nrOfPixelsPerLine+j] = 0xFF;
+          rgb565[j*camParams.nrOfPixelsPerLine+i] = 0xFFFF;
         }
       }
-      //printf("avg line %d avg pixel %d\n", avg_line, avg_pixel);
-    } else printf("not detected\n");
+    }
+
+    // Stop profiling counters
+    asm volatile ("l.nios_rrr %[out1],r0,%[in2],0xC":[out1]"=r"(cycles):[in2]"r"(1<<8|7<<4));
+    asm volatile ("l.nios_rrr %[out1],%[in1],%[in2],0xC":[out1]"=r"(stall):[in1]"r"(1),[in2]"r"(1<<9));
+    asm volatile ("l.nios_rrr %[out1],%[in1],%[in2],0xC":[out1]"=r"(idle):[in1]"r"(2),[in2]"r"(1<<10));
+    printf("nrOfCycles: total cycles: %d stall: %d idle: %d\n", cycles, stall, idle);
   }
 }

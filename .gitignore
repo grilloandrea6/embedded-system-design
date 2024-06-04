@@ -19,3 +19,5 @@ virtual_prototype/systems/singleCore/sandbox/
 */*/*/*/*/*.c.d
 */*/*/*/*/*/*.c.o
 */*/*/*/*/*/*.c.d
+*.i
+*.s

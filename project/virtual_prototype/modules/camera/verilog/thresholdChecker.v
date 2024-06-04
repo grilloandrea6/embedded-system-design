@@ -1,17 +1,23 @@
 module thresholdChecker (
     input wire[15:0] rgb565,
-    output wire[15:0] thresholdedPixel);
+    output wire out);
 
-/*
- * The color to detect is 'magenta': (255, 0, 255) in RGB, 0xf81f [11111 000000 11111] in RGB565
- * The minimum threshold is 0xc1f8 [11000 001111 11000] and the maximum threshold is 0xf82f [11111 000000 10111]
- * DETECTION CONDITION: red[4:3]==1, green[5:4]==0, blue[4:0]==1
- * If the condition is met, the pixel is showed in green, otherwise in black
- *
- * ( The average threshold is 0xd91b [11011 001000 11011] )
- */
+    wire [4:0] s_red = rgb565[15:11];
+    wire [5:0] s_green = rgb565[10:5];
+    wire [4:0] s_blue = rgb565[4:0];
 
-// red-green-blue conditions get checked
-assign thresholdedPixel = (rgb565[15:11]==2'b11 && rgb565[10:5]==2'b00 && rgb565[4:0]==2'b11) ? 16'hFFFFF : rgb565; // 16'h0000;
+    wire s_rok, s_gok, s_bok;
+
+    // Use of fine-tuned values with comparison operators
+    // assign s_rok = s_red > 5'd15 & s_red < 5'd25;
+    // assign s_gok = s_green < 6'd10;
+    // assign s_bok = s_blue > 5'd5 & s_blue < 5'd15;
+
+    // Check with no use of comparison operators
+    assign s_rok = ~s_red[4] & s_red[3];
+    assign s_gok = ~s_green[5] & ~s_green[4] & ~s_green[3];
+    assign s_bok = (s_blue[2] | (s_blue[1] & s_blue[0])) & ~s_blue[4] & ~s_blue[3];
+
+    assign out = s_rok & s_gok & s_bok;
 
 endmodule

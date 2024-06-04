@@ -1,4 +1,4 @@
-PROJECT = objectDetection
+PROJECT = project
 
 # please refer to the followings for more information:
 #   https://stackoverflow.com/a/30142139/2604712
@@ -15,7 +15,7 @@ LD = $(TOOLCHAIN)-ld
 ELF2MEM ?= convert_or32
 DEBUG ?= 0
 
-CFLAGS ?=
+CFLAGS ?= -Wall -save-temps
 LDFLAGS ?=
 
 _LDFLAGS += -nostartfiles
