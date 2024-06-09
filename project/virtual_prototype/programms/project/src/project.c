@@ -5,10 +5,10 @@
 
 #define MIDDLE          110100
 
-#define DEG             20
+#define DEG             408
 
 #define MAX             124380
-#define MIN             95820 
+#define MIN             95820
 
 #define ENABLE_BOTH_PWM 0b0011
 
@@ -29,7 +29,7 @@ int main () {
   printf("Starting servos.\n");
   asm volatile("l.nios_rrr r0,%[in1],%[in2],21" :: [in1] "r"(ENABLE_BOTH_PWM | SET_PWM_1), [in2] "r"(pwm_x));
   asm volatile("l.nios_rrr r0,%[in1],%[in2],21" :: [in1] "r"(ENABLE_BOTH_PWM | SET_PWM_2), [in2] "r"(pwm_y));
-  
+
   printf("Initialising camera (this takes up to 3 seconds)!\n" );
   camParams = initOv7670(VGA);
   printf("Done!\n" );
@@ -81,7 +81,7 @@ int main () {
           rgb565[j*camParams.nrOfPixelsPerLine+i] = 0xFFFF;
         }
       }
-            
+
       if(avg_line < MIDDLE_LINE) pwm_x = pwm_x < MIN ? MIN : (pwm_x - DEG);
       else                       pwm_x = pwm_x > MAX ? MAX : (pwm_x + DEG);
 
