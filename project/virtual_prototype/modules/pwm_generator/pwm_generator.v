@@ -47,8 +47,8 @@ module pwm_generator #(  parameter [7:0] customId = 8'h00 )
         end else begin
             if (s_isMyCust) begin
                 pwmActivated <= valueA[1:0];
-                duty_1 <= valueA[3:2] == 2'b01 ? valueB : duty_1;
-                duty_2 <= valueA[3:2] == 2'b10 ? valueB : duty_2;
+                duty_1 <= valueA[3:2] == 2'b01 ? valueB[19:0] : duty_1;
+                duty_2 <= valueA[3:2] == 2'b10 ? valueB[19:0] : duty_2;
             end
         end
         counterFreq <= counterFreq + 1'b1; 
